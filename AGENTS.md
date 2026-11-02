@@ -4,7 +4,7 @@
 
 ## 1. 项目定位与目录
 
-Typewriter 是面向 Windows 的本地纯文本 Electron 编辑器，使用 React、TypeScript、zustand、three.js 和 Web Audio。根 `package.json` 管理全部源码、测试与构建；主进程、预加载层和渲染层属于同一个应用工程。
+Typewriter 是支持 Windows 和 macOS 的本地纯文本 Electron 编辑器，使用 React、TypeScript、zustand、three.js 和 Web Audio。根 `package.json` 管理全部源码、测试与构建；主进程、预加载层和渲染层属于同一个应用工程。
 
 | 路径 | 任务入口 |
 | --- | --- |
@@ -53,7 +53,7 @@ Typewriter 是面向 Windows 的本地纯文本 Electron 编辑器，使用 Reac
 
 ## 7. 常用命令
 
-所有命令在仓库根目录执行。需要应用工具链时先用 `npm ci` 按锁文件安装开发依赖；Electron 启动还需要对应二进制和桌面环境。完整路径与字体验收使用 Windows：`pathGuard` 单测使用 Windows 绝对路径，字体 E2E 直接读取 `C:\Windows\Fonts\georgia.ttf`，sfnt 单测会按系统字体存在与否条件跳过。E2E 的 `TW_USER_DATA` 隔离设置和字体等应用数据，自动保存草稿仍写入系统文档目录下的 `打字机`。
+所有命令在仓库根目录执行，使用 `.nvmrc` 指定的 Node.js 24。需要应用工具链时先用 `npm ci` 安装锁文件依赖及 Electron 二进制；运行 Electron 需要桌面环境。路径单测在同一主机分别验证 Windows 和 POSIX 规则；字体 E2E 使用依赖内的 WOFF2，真实系统 TTF/TTC 单测按字体存在与否条件执行。测试同时设置 `TW_USER_DATA` 和 `TW_E2E=1`，将设置、字体与文档目录隔离到临时目录。
 
 | 命令 | 用途与前提 |
 | --- | --- |
@@ -64,13 +64,15 @@ Typewriter 是面向 Windows 的本地纯文本 Electron 编辑器，使用 Reac
 | `npm test` | 执行 `tests/unit/**/*.test.ts`，检查实际用例数、失败和跳过 |
 | `npm test -- tests/unit/machine.test.ts tests/unit/target.test.ts` | 保存状态与路径逻辑的定向测试示例 |
 | `npm run build` | 将三端构建到 `out/main/`、`out/preload/`、`out/renderer/` |
-| `npm run e2e` | 先构建，再启动真实 Electron；脚本不自动构建，完整套件需要上述 Windows 字体 |
-| `npm run icon` | 启动 Electron，重新生成 `build/icon.ico`；仅用于图标变更 |
+| `npm run e2e` | 先构建，再启动真实 Electron；覆盖两端公共流程，Mac 另测 Dock 与关窗重开 |
+| `npm run icon` | 启动 Electron，生成 Windows ICO 与 macOS 高分辨率 PNG 图标源 |
 | `npm run pack:dir` | 构建后按宿主平台输出应用目录；Windows 输出用于产物验证的目录 |
-| `npm run dist` | 构建后显式执行 `electron-builder --win portable` |
-| `npm run verify -- release/win-unpacked/Typewriter.exe` | 在 Windows 验证已有目录产物；先创建 `artifacts/` 供截图写入 |
+| `npm run dist` | 构建当前平台的默认安装包与归档，不发布 Release |
+| `npm run dist:win` | 在 Windows 构建 x64 NSIS 与 ZIP |
+| `npm run dist:mac -- --arm64` / `--x64` | 在 Mac 构建对应架构的 DMG 与 ZIP |
+| `npm run verify` | 自动选择当前平台/架构的目录产物，验证窗口、输入、字体和场景；可追加明确可执行路径 |
 
-打包存在已知定义差异：`electron-builder.yml` 声明 NSIS，但 `dist` 脚本显式选择 portable。处理发布任务时先核实要求的目标与实际输出，不能把当前 `dist` 描述成 NSIS 安装包构建。
+`.github/workflows/build.yml` 在 Windows x64、Mac arm64 和 Mac x64 原生 runner 上检查、测试、打包并启动真实产物，上传安装包与截图。打包脚本统一使用 `--publish never`；产物尚未配置开发者签名和 Mac 公证。
 
 纯文档改动检查链接、格式、事实及修改范围。TypeScript 逻辑改动运行类型检查、lint 和相关单测；编辑、IPC、窗口或舞台行为改动再构建并执行相关 E2E，IME 与 DPI 使用 README 的手工步骤补充。打包变更需要实际目标产物与产物验证。缺失环境时记录未验证项，不用跳过的检查证明通过。
 

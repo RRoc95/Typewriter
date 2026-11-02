@@ -4,7 +4,7 @@
 
 ## 1. 系统定位与运行边界
 
-Typewriter 是面向 Windows 的本地纯文本编辑器。Electron 主进程管理窗口、原生菜单、文件与设置，React 渲染层管理界面、原生文本编辑、three.js 装饰和 Web Audio 音效。应用数据写入本地文件，没有服务端工程。
+Typewriter 是支持 Windows 和 macOS 的本地纯文本编辑器。Electron 主进程管理窗口、原生菜单、文件与设置，React 渲染层管理界面、原生文本编辑、three.js 装饰和 Web Audio 音效。应用数据写入本地文件，没有服务端工程。
 
 `electron.vite.config.ts` 以 `src/main/index.ts`、`src/preload/index.ts`、`src/renderer/index.html` 为三个构建入口。主进程和预加载输出为 CommonJS 的 `out/main/index.cjs` 与 `out/preload/index.cjs`，渲染资源写入 `out/renderer/`；`package.json` 的 `main` 指向构建后的主入口。
 
@@ -21,17 +21,18 @@ main、preload、renderer → src/shared/* 的共享定义
 ```
 
 - `src/main/ipc/handle.ts` 将其包装的处理器异常转换为 `R<T>` 的成功或错误结果，不返回异常堆栈。启动载荷 `CH.STARTUP` 独立注册，直接返回 `StartupPayload`。
-- `src/preload/index.ts` 通过 `contextBridge` 暴露固定的 `window.api` 方法与事件订阅；订阅方法返回取消函数。拖拽文件经 `webUtils.getPathForFile` 取得路径。
+- `src/preload/index.ts` 通过 `contextBridge` 暴露固定的 `window.api` 方法、只读平台标识与事件订阅；订阅方法返回取消函数。拖拽文件经 `webUtils.getPathForFile` 取得路径。
 - `src/shared/ipc.ts` 定义通道与文件、保存、会话等载荷，`settings.ts` 定义设置与校验，`menu.ts` 同时供原生和可见菜单使用，`theme-tokens.ts` 供主题与标题栏使用。
 - `tsconfig.node.json` 和 `tsconfig.web.json` 分开声明 Node 与 DOM 环境；测试由 `tsconfig.test.json` 检查。渲染层的系统 I/O 经桥调用主进程。
 
 ## 3. 启动与应用生命周期
 
-1. `src/main/index.ts` 在请求单实例锁前读取可选的 `TW_USER_DATA`，用它覆盖 Electron `userData` 位置。第二实例把窗口唤起，并可转交支持扩展名的文件参数。
+1. `src/main/index.ts` 在请求单实例锁前读取可选的 `TW_USER_DATA`，用它覆盖 Electron `userData` 位置；同时设置 `TW_E2E=1` 时，系统文档路径也指向该临时目录内的 `Documents/`。第二实例把窗口唤起，并可转交支持扩展名的文件参数。
 2. `app.whenReady()` 后载入设置、尝试创建并授权自动保存目录、授权 `userData`，拒绝会话权限请求，注册业务 IPC，并检查会话记录及启动文件。
-3. `src/main/window.ts` 恢复可见屏幕内的窗口位置，加载预加载脚本；开发时读取 `ELECTRON_RENDERER_URL`，构建后加载本地 HTML。窗口在 `ready-to-show` 显示，页面加载完成后启动主进程自动保存时钟。
+3. `src/main/window.ts` 恢复可见屏幕内的窗口位置，加载预加载脚本；开发时读取 `ELECTRON_RENDERER_URL`，构建后加载本地 HTML。Windows 使用标题栏 overlay，Mac 使用 `hiddenInset` 与原生窗口按钮；窗口在 `ready-to-show` 显示，页面加载完成后启动主进程自动保存时钟，关闭后停止时钟。
 4. `src/renderer/src/main.tsx` 以 React `StrictMode` 挂载 `App`。`App.tsx` 注册字体，通过桥获取设置、应用目录和最近文件，建立初始标签与编辑引擎；就绪后拉取一次性启动载荷。
-5. 主窗口关闭先被拦截并通知渲染层。当前内容有改动时尝试保存；失败则由界面确认是否退出。主进程在收到 `closeReady(true)` 后销毁窗口；所有窗口关闭时退出应用。
+5. 关窗及显式退出均经过渲染层保存/失败确认。`before-quit` 记录退出意图；`closeReady(true)` 销毁窗口，有退出意图时继续退出，取消则清除意图。Windows 最后窗口关闭后退出，Mac 继续驻留并在 `activate` 时使用最新设置重开窗口。
+6. Mac 的 `open-file` 监听在 ready 前注册；冷启动文件经一次性启动载荷读取，运行时转交现有窗口，无窗口时创建窗口后拉取载荷。菜单增加 Mac 应用菜单，公共操作使用 `CmdOrCtrl`，重做及快捷键显示由共享菜单函数处理。
 
 ## 4. 编辑、标签与舞台
 
@@ -70,11 +71,13 @@ main/services/autosaveClock.ts 每秒发送 tick，窗口失焦另发 blur tick
 
 `services/fontService.ts` 通过原生对话框导入本地字体，检查扩展名、12 MiB 大小上限与魔数，以随机 ID 复制到 `userData/fonts/`，把元信息写入设置。渲染层通过桥读取字节，再由 `fonts/loader.ts` 注册 `FontFace`；内置字体由 `fonts/catalog.ts` 从依赖资源加载。字体解析实现与对应测试位于 `services/sfnt.ts` 和 `tests/unit/sfnt.test.ts`。
 
-`window.ts` 开启上下文隔离与沙箱，关闭 Node 集成和 webview，拒绝新窗口与页面导航；`index.ts` 拒绝会话权限。`security/pathGuard.ts` 维护授权目录与单文件集合，规范化路径并拦截相对路径、UNC、设备名等输入；保存与 reveal 处理器检查授权，打开路径会经校验后新增授权。新增 IPC 需要按具体处理器验证输入，TypeScript 类型不会替代运行时校验。
+`window.ts` 开启上下文隔离与沙箱，关闭 Node 集成和 webview，拒绝新窗口与页面导航；`index.ts` 拒绝会话权限。`security/pathGuard.ts` 维护授权目录与单文件集合，按宿主平台选择 Windows 或 POSIX 路径规则。Windows 拒绝 UNC/设备名并忽略授权路径大小写；POSIX 保留合法文件名与大小写，目录授权检查完整分隔符边界。保存与 reveal 处理器检查授权，打开路径会经校验后新增授权。新增 IPC 需要按具体处理器验证输入，TypeScript 类型不会替代运行时校验。
 
 ## 7. 构建、资源与修改落点
 
-`electron-builder.yml` 从 `out/**/*` 与 `package.json` 打包到 `release/`，配置 Windows x64 NSIS、用户级安装和卸载保留应用数据。实际目标同时受 npm 脚本影响；`dist` 的 portable 覆盖差异见 [命令说明](AGENTS.md#7-常用命令)。`pack:dir` 未显式传平台，产物取决于宿主平台。
+`electron-builder.yml` 从 `out/**/*` 与 `package.json` 打包到 `release/`。Windows x64 生成 NSIS 和 ZIP，用户级安装且卸载保留应用数据；Mac 按所选 arm64/x64 架构生成 DMG 和 ZIP，使用高分辨率图标源，当前不做开发者签名或公证。`dist` 选择当前平台，显式平台命令见 [命令说明](AGENTS.md#7-常用命令)，均不自动发布 Release。`pack:dir` 仅生成宿主平台的应用目录。
+
+`.github/workflows/build.yml` 在 Windows、Apple Silicon Mac 与 Intel Mac 原生 runner 使用 Node.js 24，依次执行类型检查、lint、单测、Electron E2E、图标生成、打包和产物启动验证，上传安装包/归档与诊断截图。
 
 | 修改内容 | 优先查看 |
 | --- | --- |
@@ -91,6 +94,6 @@ main/services/autosaveClock.ts 每秒发送 tick，窗口失焦另发 blur tick
 可执行命令、工作目录与平台前提统一见 [AGENTS.md 的常用命令](AGENTS.md#7-常用命令)。
 
 - `tests/unit/` 覆盖设置裁剪、主题令牌与对比度、文本工具、目标路径、保存状态转换、字体解析和路径守卫。其 Node 测试环境不执行实际窗口或文件保存 IPC；没有现成的控制器到主进程保存集成测试。
-- `tests/e2e/smoke.spec.ts` 使用真实 Electron，覆盖输入、主题结构稳定、字数、自动保存状态栏路径、预置自定义字体的加载/应用、多标签与菜单。测试需要已有 `out/`；字体用例直接依赖 Windows 字体。自动保存用例检查状态栏路径，没有直接断言文件内容。
-- `scripts/verify-pack.mjs` 启动目录产物，断言窗口、输入、字体、主题、光标、3D 挂载和控制台错误，并写入截图；它不验证安装与卸载过程。
+- `tests/e2e/smoke.spec.ts` 使用真实 Electron，覆盖输入、主题结构稳定、字数、自动保存状态栏路径、预置自定义字体的加载/应用、多标签与菜单。测试需要已有 `out/`，字体用例使用依赖内的 WOFF2。自动保存与快捷键用例读取实际落盘内容；显式退出验证先保存，Mac 另测 Dock 激活与打开文件。测试完成通过 close 事件跟踪并清理应用。
+- `scripts/verify-pack.mjs` 按当前平台和架构选择目录产物并使用隔离数据目录启动，断言窗口、输入、字体、主题、光标、3D 挂载和控制台错误，并写入截图；它不验证安装与卸载过程。
 - 类型检查与 lint 验证对应配置的约束，构建验证三端产物生成。IME 候选框、撤销栈、保存冲突、DPI 和安装行为需要按 [README 手工清单](README.md) 在目标环境补充实际验收。

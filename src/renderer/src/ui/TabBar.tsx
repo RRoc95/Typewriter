@@ -1,4 +1,5 @@
 import type { TabMeta } from '../state/store'
+import { formatShortcut } from '../../../shared/menu'
 
 type Props = {
   tabs: TabMeta[]
@@ -33,7 +34,7 @@ export function TabBar({ tabs, activeId, onActivate, onClose, onNew }: Props) {
             <span className="tab-dirty" data-dirty={tab.dirty} />
             <button
               className="tab-close"
-              title="关闭（Ctrl+W）"
+              title={`关闭（${formatShortcut('CmdOrCtrl+W', window.api.platform)}）`}
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => {
                 event.stopPropagation()
@@ -48,7 +49,7 @@ export function TabBar({ tabs, activeId, onActivate, onClose, onNew }: Props) {
         ))}
       </div>
 
-      <button className="tab-new" onClick={onNew} title="新建标签页（Ctrl+N）">
+      <button className="tab-new" onClick={onNew} title={`新建标签页（${formatShortcut('CmdOrCtrl+N', window.api.platform)}）`}>
         <svg viewBox="0 0 14 14" aria-hidden="true">
           <path d="M7 3v8M3 7h8" />
         </svg>

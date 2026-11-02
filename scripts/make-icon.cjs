@@ -81,13 +81,17 @@ app.whenReady().then(async () => {
     win.setContentSize(size, size)
     await new Promise((resolve) => setTimeout(resolve, 90))
     const image = await win.webContents.capturePage()
-    entries.push([size, image.toPNG()])
+    entries.push([size, image.resize({ width: size, height: size }).toPNG()])
   }
 
   const outDir = path.join(__dirname, '..', 'build')
   fs.mkdirSync(outDir, { recursive: true })
   fs.writeFileSync(path.join(outDir, 'icon.ico'), buildIco(entries))
-  fs.writeFileSync(path.join(outDir, 'icon.png'), entries[entries.length - 1][1])
+  // macOS icon conversion needs a high-resolution source, independent of display DPI.
+  win.setContentSize(1024, 1024)
+  await new Promise((resolve) => setTimeout(resolve, 90))
+  const macIcon = await win.webContents.capturePage()
+  fs.writeFileSync(path.join(outDir, 'icon.png'), macIcon.resize({ width: 1024, height: 1024 }).toPNG())
   console.log('icon.ico written', SIZES.join(','))
   app.quit()
 })

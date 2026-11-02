@@ -1,6 +1,8 @@
 # 打字机 · Typewriter
 
-面向 Windows 的纯文本（`.txt`）编辑器，视觉与交互借鉴 [Typewriter Nocturne](https://github.com/Chaosnap/Typewriter-Nocturne) 一类「打字机 / 沉浸写作」软件的语汇：纸面从滚筒里吐出来，字锤随光标沿滑轨移动，灯只照亮一页纸，声音是机器自己的声音。
+[![Build Windows and macOS](https://github.com/RRoc95/Typewriter/actions/workflows/build.yml/badge.svg)](https://github.com/RRoc95/Typewriter/actions/workflows/build.yml)
+
+支持 Windows 和 macOS 的本地纯文本（`.txt`）编辑器，视觉与交互借鉴 [Typewriter Nocturne](https://github.com/Chaosnap/Typewriter-Nocturne) 一类「打字机 / 沉浸写作」软件的语汇：纸面从滚筒里吐出来，字锤随光标沿滑轨移动，灯只照亮一页纸，声音是机器自己的声音。
 
 但它首先是一个能用的编辑器：一个原生 `textarea`，中文输入法零干预，纯文本，不联网，不碰你的内容。
 
@@ -8,17 +10,18 @@
 
 ## 一、交付物
 
-| 文件 | 说明 |
-|---|---|
-| `release/Typewriter-1.0.0-Setup.exe` | **主交付**。98 MB 一键安装包，装到 `%LOCALAPPDATA%\Programs\Typewriter`，装完启动 **1.3–1.6 秒**，自动建桌面与开始菜单快捷方式，不需要管理员权限 |
-| `release/Typewriter-1.0.0-win64.zip` | 免安装兜底。132 MB，解压后直接运行 `win-unpacked/Typewriter.exe`，启动同样 1.3–1.6 秒 |
-| `src/` `tests/` `scripts/` | 完整可复现源码，`npm run dev` 开发，`npm run dist` 重新打包 |
+在 [GitHub Actions](https://github.com/RRoc95/Typewriter/actions/workflows/build.yml) 打开成功运行，在 Artifacts 下载对应平台的压缩包。构建产物保留 14 天；也可按下文从源码构建。
 
-**为什么不再提供 portable 单文件 exe**：electron-builder 的 portable 目标每次启动都会 `RMDir /r` 再 `File /r`，把 330 MB 的 Electron 运行时整个解压到临时目录。实测冷启动 **18.2 秒**（两次 18.2 / 18.3），换成 normal 压缩无改善。这不是配置问题，是 portable 这种形态的固有代价，所以改成安装包 + 免安装目录包两种快启动形态。
+| 平台 | 构建产物 | 使用方式 |
+| --- | --- | --- |
+| Windows x64 | `Typewriter-1.0.0-windows-x64-Setup.exe` | 用户级 NSIS 安装，无需管理员权限 |
+| Windows x64 | `Typewriter-1.0.0-windows-x64.zip` | 解压后运行 `Typewriter.exe` |
+| macOS Apple Silicon | `Typewriter-1.0.0-macOS-arm64.dmg` / `.zip` | 打开 DMG，将 `Typewriter.app` 拖入 Applications；ZIP 可直接解压 |
+| macOS Intel | `Typewriter-1.0.0-macOS-x64.dmg` / `.zip` | 使用 Intel 版本的应用 |
 
-配置与草稿固定在 `%APPDATA%\Typewriter\`，卸载时保留。
+Windows 使用安装包和目录 ZIP，不再使用每次启动都自解压的 portable 目标。macOS 使用原生窗口按钮，关闭最后一个窗口后继续驻留，点击 Dock 可重开；Command+Q 退出前先保存文稿。
 
-> 未签名 exe 首次运行会被 SmartScreen 拦一次：点「更多信息 → 仍要运行」。这不是缺陷，签名证书需要付费。
+产物暂未使用开发者证书签名，Mac 也未公证。Windows 可能显示 SmartScreen；macOS 首次打开可在系统设置的“隐私与安全性”中允许该应用。请只运行自己从本项目获取或构建的产物。
 
 ---
 
@@ -26,14 +29,14 @@
 
 | 决策 | 选择 | 依据 |
 |---|---|---|
-| 运行时 | **Electron 40.10.2**（精确锁定） | 本机无 Rust/cargo，Tauri 路线直接排除；Chromium 保证 IME、字体渲染、Web Audio 行为一致 |
+| 运行时 | **Electron 40.10.2**（精确锁定） | 共用 Chromium 与 Node.js，在 Windows 和 macOS 提供原生桌面能力 |
 | 构建 | **electron-vite 6** + Vite 8 | main/preload/renderer 三段构建，主进程与预加载输出 CJS，渲染层走标准 Vite |
 | 前端 | **React 19 + TypeScript**，状态用 zustand | 侧栏与主题需要响应式；舞台与编辑器是命令式 DOM，React 只挂一次，不参与每帧 |
 | 编辑内核 | **原生 `<textarea>`** | ① 中文输入法走 Chromium 原生组字，零 JS 干预——这是不可让渡的硬要求；② 原生撤销栈与上屏单元天然对齐；③ 纯文本不需要布局引擎；④ 零依赖 |
 | 舞台 | **three.js 实时 3D 机身 + CSS 纸张** | 机身、滚筒、旋钮、滑轨、字锤、色带盘、键床全部程序化建模，PBR 材质 + 软阴影 + PMREM 环境反射；模型与版式直接移植自 Typewriter Nocturne（MIT），见 `THIRD-PARTY-NOTICES.md` |
 | 启动 | **3D 场景按需懒加载** | three.js 与模型单独成 chunk（1.4 MB），首屏只加载 677 KB 的编辑器，窗口先出现再挂 3D |
 | 音效 | **Web Audio 实时合成** | 无音频素材的体积与授权问题；可参数化成多套音色、可随机抖动、可按打字头位置做立体声 |
-| 打包 | **electron-builder 26 → NSIS 一键安装 + zip** | 一键装到用户目录、免 UAC、启动 1.4 秒；放弃 portable，因为它每次启动都要全量解压 |
+| 打包 | **electron-builder 26** | Windows 生成 NSIS + ZIP；macOS 分别生成 arm64/x64 的 DMG + ZIP |
 
 **为什么不用 CodeMirror 6**：它提供的高亮、虚拟滚动、多光标我们一个都不用，却要接管 DOM，牺牲墨迹层与光标坐标的可控性。纯文本 < 2 MB 时 textarea 完全够用。
 
@@ -147,6 +150,8 @@
 
 ## 四、快捷键
 
+下表为 Windows 快捷键；Mac 的常用操作使用 Command 替代 Ctrl，重做为 Command+Shift+Z，退出为 Command+Q。切页仍使用 Control+Tab / Control+Shift+Tab。界面会显示当前平台的实际修饰键。
+
 | 操作 | 快捷键 |
 |---|---|
 | 新建标签页 / 打开 / 保存 / 另存为 | `Ctrl+N` / `Ctrl+O` / `Ctrl+S` / `Ctrl+Shift+S` |
@@ -163,48 +168,61 @@
 
 ## 五、数据位置
 
-| 内容 | 路径 |
-|---|---|
-| 设置 | `%APPDATA%\Typewriter\settings.json` |
-| 自定义字体 | `%APPDATA%\Typewriter\fonts\` |
-| 会话哨兵 | `%APPDATA%\Typewriter\session.json` |
-| 新文稿自动保存 | `%USERPROFILE%\Documents\打字机\` |
+设置、自定义字体和会话记录位于 Electron 的应用数据目录；未命名草稿默认写入系统文档目录下的 `打字机/`，已有文件继续原地保存。
+
+| 内容 | Windows | macOS |
+| --- | --- | --- |
+| 设置、字体、会话记录 | `%APPDATA%/Typewriter/` | `~/Library/Application Support/Typewriter/` |
+| 默认未命名草稿 | 系统文档目录下的 `打字机/` | `~/Documents/打字机/` |
+
+开发模式的应用目录名称由 Electron 应用名决定；可通过“关于打字机”查看实际配置目录。测试设置 `TW_USER_DATA` 与 `TW_E2E=1` 后，文档目录一并隔离到临时目录，不写入真实用户文档。
 
 ---
 
 ## 六、开发与构建
 
+需要 Node.js 24 与 npm。仓库提供 `.nvmrc`，已有 nvm 时可先执行 `nvm use`。Windows 与 macOS 应在各自的系统上生成安装包；运行 Electron 需要桌面会话。
+
 ```bash
-npm install          # 依赖全部为 devDependencies，运行时代码由 Vite 打包
-npm run dev          # 开发，热更新
-npm run typecheck    # 三份 tsconfig 分别检查（主进程 / 渲染层 / 测试）
+npm ci               # 按锁文件安装开发依赖及 Electron
+npm run dev          # 开发启动与热更新
+npm run typecheck    # 主进程、渲染层、测试的类型检查
 npm run lint
 npm test             # Vitest 单元测试
+npm run build        # 生成 out/，E2E 前先执行
 npm run e2e          # Playwright 驱动真实 Electron
-npm run icon         # 由 SVG 生成多尺寸 build/icon.ico
-npm run build        # 仅构建 out/
-npm run dist         # 构建 + 打 NSIS 安装包
-npm run pack:dir     # 仅出免安装目录
-npm run verify -- release/win-unpacked/Typewriter.exe   # 启动打包产物做运行时断言
+npm run icon         # 生成 Windows ICO 和 macOS 高分辨率图标源
+npm run dist:win     # 在 Windows 构建 NSIS 安装包和 ZIP
+npm run dist:mac -- --arm64  # 在 Mac 构建 Apple Silicon DMG/ZIP
+npm run dist:mac -- --x64    # 在 Mac 构建 Intel DMG/ZIP
+npm run dist         # 构建当前平台的默认目标
+npm run pack:dir     # 生成当前平台的应用目录
+npm run verify       # 启动当前平台/架构的目录产物并做运行时断言
 ```
 
-**打包降级**：若 `electron-builder` 因签名工具或旧输出目录报错，依次尝试 ① 关闭签名自动发现；② `npm run pack:dir` 出免安装目录 + 手动打 zip；③ 把工程复制到纯 ASCII 路径再构建（`D:\打字机` 这类中文路径在某些 NSIS 版本上会出问题）。
+输出均位于 `release/`；构建脚本使用 `--publish never`，不会自动发布 Release。`verify` 也可传入明确的应用可执行路径：
+
+```bash
+npm run verify -- release/win-unpacked/Typewriter.exe
+npm run verify -- release/mac-arm64/Typewriter.app/Contents/MacOS/Typewriter
+```
+
+GitHub Actions 使用 `windows-2025`、`macos-15` 和 `macos-15-intel` 原生 runner，分别检查 Windows x64、macOS arm64 与 macOS x64。每项构建都执行类型检查、lint、单测、Electron E2E、打包、产物启动验证，并上传安装包和诊断截图。
 
 ---
 
 ## 七、验证
 
-**自动化**（全部通过）：
+自动化结果以 [Actions 运行记录](https://github.com/RRoc95/Typewriter/actions/workflows/build.yml) 为准，不依赖历史测试数字。
 
-- `npm run typecheck`：主进程（无 DOM lib）、渲染层（无 `@types/node`）、测试三份配置分别检查——渲染层误用 `fs` 会直接编译失败。
-- `npm run lint`：含「渲染层不得出现裸色值」的人工约定与 Node/浏览器全局隔离。
-- `npm test`：**55 个单元测试**——设置 clamp 与迁移、主题令牌完整性与 WCAG 对比度、自动保存状态机全迁移表（含过期代号、保存中编辑合并、退避序列）、目标路径四级优先级、文件名清洗、EOL/BOM/哈希/字数（含 2 MB 性能上界）、sfnt 字体名解析、pathGuard 攻击样本。
-- `npm run e2e`：**3 个端到端**——输入与字数、主题切换零 DOM 重建、自动保存落盘、自定义字体注册与持久化。
-- `npm run verify`：**10 项运行时断言**——窗口可见、标题正确、可输入、主题变量生效、内置字体加载、墨块光标定位、机身渲染、字体注册、无 console 错误。
+- `npm run typecheck` / `npm run lint`：检查三端类型和现有代码规则；配色令牌仍需代码审查确认。
+- `npm test`：验证设置、主题、文本、保存状态机、Windows/POSIX 路径授权、保存目标和平台快捷键。真实系统字体测试按本机字体是否存在条件执行。
+- `npm run e2e`：验证输入、主题切换、实际草稿落盘、跨平台字体加载、标签、菜单、保存快捷键与退出前保存；Mac 另测关窗后重开和 Dock 打开文件。
+- `npm run verify`：启动真正打包的应用，断言窗口、输入、主题、字体、光标、3D 挂载和控制台错误，并生成 `artifacts/packaged.png`。
 
 **手工验收清单**（建议按顺序过一遍）：
 
-1. 微软拼音连续输入 20 次，候选框位置正确、不重复上屏、不丢字。
+1. 在 Windows 微软拼音和 macOS 拼音中分别连续输入 20 次，候选框位置正确、不重复上屏、不丢字。
 2. 组字过程中按 `Esc` 或切窗口，回来继续输入无异常。
 3. 300 KB 文本输入延迟 < 50 ms；2 MB 以上自动进入「大文件模式」并关掉墨迹与字锤。
 4. 长文滚动流畅，纸夹跟随、倾斜自然。
@@ -242,5 +260,6 @@ npm run verify -- release/win-unpacked/Typewriter.exe   # 启动打包产物做�
 - 标签页数量没有硬上限，但每页都是一个独立 textarea；同时开 20 个以上大文件会明显吃内存。
 - 单文件上限 8 MB；超过 2 MB 自动降级特效以保证输入延迟。
 - 超过 60 万字符时放弃逐键精确测量光标，字锤改为跟随估算位置。
-- 未做代码签名，SmartScreen 会拦一次。
-- 只在 Windows 上验证与打包；主进程代码本身不依赖平台特性，但没有出 macOS / Linux 包。
+- 产物未做开发者签名与 Mac 公证，首次运行可能需要系统允许。
+- 自动化构建覆盖 Windows x64 与两类 Mac；真实中文输入法、DPI、安装/卸载交互需要手工验收。
+- Linux 未纳入打包与验收范围。

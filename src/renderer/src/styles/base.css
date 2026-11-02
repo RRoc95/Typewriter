@@ -3,7 +3,7 @@
   --tw-paper-w: min(760px, calc(100vw - 120px));
   --tw-paper-pad-x: 64px;
   --tw-paper-pad-y: 56px;
-  --tw-editor-font: "Courier Prime", "Source Han Serif SC", "Noto Serif SC", SimSun, Consolas, monospace;
+  --tw-editor-font: "Courier Prime", "Source Han Serif SC", "Noto Serif SC", "Songti SC", "PingFang SC", SimSun, Consolas, monospace;
   --tw-editor-size: 18px;
   --tw-editor-lh: 31px;
   --tw-ease: cubic-bezier(0.22, 0.68, 0.28, 1);
@@ -105,6 +105,11 @@ select {
   flex-direction: column;
   height: 100%;
   background: var(--tw-ui-frame);
+}
+
+:root[data-platform="darwin"] .titlebar {
+  padding-left: 88px;
+  padding-right: 14px;
 }
 
 .titlebar {

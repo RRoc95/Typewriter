@@ -26,7 +26,7 @@ export function applyFont(family: string, size: number, lineHeight: number): voi
   const root = document.documentElement
   root.style.setProperty(
     '--tw-editor-font',
-    `"${family}", "Source Han Serif SC", "Noto Serif SC", SimSun, Consolas, monospace`
+    `"${family}", "Source Han Serif SC", "Noto Serif SC", "Songti SC", "PingFang SC", SimSun, Consolas, monospace`
   )
   root.style.setProperty('--tw-editor-size', `${size}px`)
   root.style.setProperty('--tw-editor-lh', `${lineHeight}px`)

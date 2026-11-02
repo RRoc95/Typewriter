@@ -207,7 +207,7 @@ export function clampSettings(input: unknown): SettingsV1 {
 
 /** 编辑器字体的完整 CSS 字体栈：主字体 + 中文兜底 + 等宽兜底。 */
 export function fontStack(family: string): string {
-  return `"${family}", "Source Han Serif SC", "Noto Serif SC", SimSun, Consolas, monospace`
+  return `"${family}", "Source Han Serif SC", "Noto Serif SC", "Songti SC", "PingFang SC", SimSun, Consolas, monospace`
 }
 
 /** 整数行高，避免亚像素累积导致光标与字锤错位。 */

@@ -1,19 +1,32 @@
 import { join } from 'node:path'
-import { BrowserWindow, screen, shell } from 'electron'
+import { app, BrowserWindow, screen, shell } from 'electron'
 import { CH } from '../shared/ipc'
 import type { Bounds, SettingsV1 } from '../shared/settings'
 import { THEMES } from '../shared/theme-tokens'
 import { pathGuard } from './security/pathGuard'
-import { startAutosaveClock, tickNow } from './services/autosaveClock'
+import { startAutosaveClock, stopAutosaveClock, tickNow } from './services/autosaveClock'
 import { patchSettings } from './services/settingsStore'
 
 let mainWindow: BrowserWindow | null = null
 let closeAllowed = false
+let quitRequested = false
 
 export const getMainWindow = (): BrowserWindow | null => mainWindow
 
-export function allowWindowClose(): void {
+export function requestQuit(): void {
+  quitRequested = true
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.close()
+  else app.quit()
+}
+
+export function finishWindowClose(saved: boolean): void {
+  if (!saved) {
+    quitRequested = false
+    return
+  }
   closeAllowed = true
+  mainWindow?.destroy()
+  if (quitRequested) app.quit()
 }
 
 function visibleBounds(saved: Bounds | null): Bounds | null {
@@ -42,12 +55,10 @@ export async function createMainWindow(settings: SettingsV1): Promise<BrowserWin
     backgroundColor: theme.room.wallBottom,
     title: '打字机',
     autoHideMenuBar: true,
-    titleBarStyle: 'hidden',
-    titleBarOverlay: {
-      color: theme.ui.frame,
-      symbolColor: theme.ui.text,
-      height: 40
-    },
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+    ...(process.platform === 'darwin'
+      ? { trafficLightPosition: { x: 14, y: 12 } }
+      : { titleBarOverlay: { color: theme.ui.frame, symbolColor: theme.ui.text, height: 40 } }),
     webPreferences: {
       preload: join(__dirname, '../preload/index.cjs'),
       contextIsolation: true,
@@ -102,6 +113,7 @@ export async function createMainWindow(settings: SettingsV1): Promise<BrowserWin
   })
 
   win.on('closed', () => {
+    stopAutosaveClock()
     mainWindow = null
   })
 
@@ -130,7 +142,7 @@ export async function createMainWindow(settings: SettingsV1): Promise<BrowserWin
 }
 
 export function syncTitleBar(color: string, symbolColor: string): void {
-  if (!mainWindow || mainWindow.isDestroyed()) return
+  if (process.platform !== 'win32' || !mainWindow || mainWindow.isDestroyed()) return
   mainWindow.setTitleBarOverlay({ color, symbolColor, height: 40 })
 }
 

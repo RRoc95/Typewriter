@@ -13,6 +13,7 @@ function subscribe<T>(channel: string, cb: (payload: T) => void): Unsubscribe {
 }
 
 const api: Api = {
+  platform: process.platform,
   files: {
     openDialog: () => invoke(CH.FILE_OPEN_DIALOG),
     openPath: (filePath) => invoke(CH.FILE_OPEN_PATH, { filePath }),

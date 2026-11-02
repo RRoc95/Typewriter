@@ -23,6 +23,17 @@ describe('路径工具', () => {
 })
 
 describe('resolveTargetPath', () => {
+  it('Mac 草稿保留 POSIX 路径与根目录', () => {
+    const result = resolveTargetPath({ ...base, defaultDir: '/Users/writer/Documents/打字机' })
+    expect(result.path).toBe('/Users/writer/Documents/打字机/第一章 雨夜-20261101-030405.txt')
+    expect(result.directory).toBe('/Users/writer/Documents/打字机')
+    const root = resolveTargetPath({ ...base, fixedDir: '/' })
+    expect(root.path).toBe('/第一章 雨夜-20261101-030405.txt')
+    expect(root.directory).toBe('/')
+    expect(dirnameOf('/notes.txt')).toBe('/')
+    expect(dirnameOf('C:/notes.txt')).toBe('C:/')
+  })
+
   it('已有文件路径则原地覆盖', () => {
     const result = resolveTargetPath({ ...base, filePath: 'D:\\书稿\\第一章.txt' })
     expect(result.path).toBe('D:\\书稿\\第一章.txt')

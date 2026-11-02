@@ -1,9 +1,9 @@
 import { sanitizeFileName, titleFromText } from '../../../shared/text'
 
-/** 渲染层没有 node:path，这里只需处理 Windows 绝对路径的拼接与去尾。 */
+/** 渲染层没有 node:path，保留传入绝对路径的 Windows/POSIX 分隔符。 */
 export function joinPath(dir: string, name: string): string {
   const base = dir.replace(/[\\/]+$/, '')
-  const sep = base.includes('/') && !base.includes('\\') ? '/' : '\\'
+  const sep = dir.includes('/') && !dir.includes('\\') ? '/' : '\\'
   return `${base}${sep}${name}`
 }
 
@@ -14,6 +14,8 @@ export function basenameOf(filePath: string): string {
 
 export function dirnameOf(filePath: string): string {
   const index = Math.max(filePath.lastIndexOf('\\'), filePath.lastIndexOf('/'))
+  if (index === 0) return '/'
+  if (index === 2 && /^[A-Za-z]:/.test(filePath)) return filePath.slice(0, 3)
   return index > 0 ? filePath.slice(0, index) : filePath
 }
 
@@ -37,7 +39,7 @@ export type TargetResult = {
 }
 
 /**
- * 优先级：已有文件路径 → 指定目录 → 文档\打字机 → userData 回落。
+ * 优先级：已有文件路径 → 指定目录 → 系统文档目录下的打字机目录。
  * draftStamp 必须由调用方在会话内固定一次，否则每个 tick 都会产生新文件名。
  */
 export function resolveTargetPath(input: TargetInput): TargetResult {
@@ -45,12 +47,8 @@ export function resolveTargetPath(input: TargetInput): TargetResult {
     return { path: input.filePath, isDraft: false, directory: dirnameOf(input.filePath) }
   }
   const name = `${sanitizeFileName(input.title || '未命名')}-${input.draftStamp}.txt`
-  if (input.fixedDir) {
-    const dir = input.fixedDir.replace(/[\\/]+$/, '')
-    return { path: joinPath(dir, name), isDraft: true, directory: dir }
-  }
-  const dir = input.defaultDir.replace(/[\\/]+$/, '')
-  return { path: joinPath(dir, name), isDraft: true, directory: dir }
+  const path = joinPath(input.fixedDir ?? input.defaultDir, name)
+  return { path, isDraft: true, directory: dirnameOf(path) }
 }
 
 export function draftTitle(text: string): string {

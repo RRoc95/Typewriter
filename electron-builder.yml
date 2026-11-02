@@ -16,6 +16,8 @@ electronLanguages:
 files:
   - out/**/*
   - package.json
+  - LICENSE
+  - THIRD-PARTY-NOTICES.md
   - "!**/*.map"
 
 win:
@@ -23,9 +25,26 @@ win:
     - target: nsis
       arch:
         - x64
+    - target: zip
+      arch:
+        - x64
   icon: build/icon.ico
   requestedExecutionLevel: asInvoker
-  artifactName: Typewriter-${version}-Setup.${ext}
+  artifactName: Typewriter-${version}-windows-${arch}.${ext}
+
+mac:
+  target:
+    - dmg
+    - zip
+  category: public.app-category.productivity
+  icon: build/icon.png
+  identity: null
+  notarize: false
+  fileAssociations:
+    - ext: [txt, text, md, log, csv]
+      name: 纯文本文稿
+      role: Editor
+  artifactName: Typewriter-${version}-macOS-${arch}.${ext}
 
 # 一键安装到 %LOCALAPPDATA%\Programs\Typewriter，装完即可用；
 # 不用 portable：portable 每次启动都要把 330MB 解压到临时目录，实测要 18 秒。
@@ -39,4 +58,4 @@ nsis:
   shortcutName: 打字机
   runAfterFinish: true
   deleteAppDataOnUninstall: false
-  artifactName: Typewriter-${version}-Setup.${ext}
+  artifactName: Typewriter-${version}-windows-${arch}-Setup.${ext}

@@ -1,11 +1,14 @@
-import { mkdtemp } from 'node:fs/promises'
+import { mkdir, mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron } from '@playwright/test'
 
-const executablePath = process.argv[2] ?? 'release/win-unpacked/Typewriter.exe'
+const defaultExecutable = process.platform === 'darwin'
+  ? join('release', process.arch === 'arm64' ? 'mac-arm64' : 'mac', 'Typewriter.app', 'Contents', 'MacOS', 'Typewriter')
+  : 'release/win-unpacked/Typewriter.exe'
+const executablePath = process.argv[2] ?? defaultExecutable
 const userData = await mkdtemp(join(tmpdir(), 'tw-verify-'))
-const env = { ...process.env, TW_USER_DATA: userData }
+const env = { ...process.env, TW_USER_DATA: userData, TW_E2E: '1' }
 delete env.ELECTRON_RUN_AS_NODE
 delete env.NODE_OPTIONS
 
@@ -49,6 +52,7 @@ const report = await win.evaluate(async () => {
   }
 })
 
+await mkdir('artifacts', { recursive: true })
 await win.screenshot({ path: 'artifacts/packaged.png' })
 await app.close()
 

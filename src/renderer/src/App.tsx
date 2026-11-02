@@ -614,7 +614,10 @@ export function App() {
           setPendingClose(false)
           void window.api.win.closeReady(true)
         }}
-        onCancel={() => setPendingClose(false)}
+        onCancel={() => {
+          setPendingClose(false)
+          void window.api.win.closeReady(false)
+        }}
       />
     </div>
   )

@@ -18,6 +18,7 @@ import type { SettingsV1 } from '../shared/settings'
 export type Unsubscribe = () => void
 
 export type Api = {
+  platform: string
   files: {
     openDialog: () => Promise<Result<{ canceled: true } | FileDoc>>
     openPath: (filePath: string) => Promise<Result<FileDoc>>

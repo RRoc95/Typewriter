@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { CH, type AppInfo, type FindRequest, type ThemeBarRequest } from '../../shared/ipc'
 import type { EditAction } from '../../shared/menu'
 import { getSettings } from '../services/settingsStore'
-import { allowWindowClose, getMainWindow, syncTitleBar } from '../window'
+import { finishWindowClose, getMainWindow, syncTitleBar } from '../window'
 import { ensureAuthorizedDirectory } from './file'
 import { handle } from './handle'
 
@@ -13,10 +13,7 @@ export function registerWinIpc(): void {
   handle<void, { bounds: unknown; maximized: boolean }>(CH.WIN_GET_STATE, () => getSettings().window)
 
   handle<{ saved: boolean }, null>(CH.WIN_CLOSE_READY, ({ saved }) => {
-    if (!saved) return null
-    const win = getMainWindow()
-    allowWindowClose()
-    win?.destroy()
+    finishWindowClose(saved)
     return null
   })
 
@@ -112,7 +109,7 @@ export function registerWinIpc(): void {
         type: 'info',
         title: '关于打字机',
         message: `打字机 ${app.getVersion()}`,
-        detail: `面向 Windows 的纯文本编辑器。\n\n配置目录：${app.getPath('userData')}`,
+        detail: `面向 Windows 和 macOS 的纯文本编辑器。\n\n配置目录：${app.getPath('userData')}`,
         buttons: ['好']
       })
     }

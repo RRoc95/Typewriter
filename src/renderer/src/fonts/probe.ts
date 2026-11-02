@@ -14,6 +14,11 @@ const CANDIDATES = [
   'Source Han Serif SC',
   'STKaiti',
   'STFangsong',
+  'Songti SC',
+  'PingFang SC',
+  'Heiti SC',
+  'Menlo',
+  'Monaco',
   'Consolas',
   'Courier New',
   'Cascadia Mono',
@@ -29,7 +34,7 @@ const CANDIDATES = [
 ]
 
 /** 中文优先排序，便于用户先看到能排中文的字体。 */
-const CJK_HINTS = /Sim|Kai|Fang|Hei|Deng|YaHei|Han|Noto|ST/i
+const CJK_HINTS = /Sim|Kai|Fang|Hei|Deng|YaHei|Han|Noto|Songti|ST/i
 
 let cache: string[] | null = null
 

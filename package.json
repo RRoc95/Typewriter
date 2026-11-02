@@ -2,7 +2,7 @@
   "name": "typewriter",
   "version": "1.0.0",
   "private": true,
-  "description": "打字机 — 面向 Windows 的纯文本编辑器",
+  "description": "打字机 — 面向 Windows 和 macOS 的纯文本编辑器",
   "author": "Typewriter",
   "license": "MIT",
   "type": "module",
@@ -16,9 +16,11 @@
     "e2e": "playwright test",
     "icon": "electron scripts/make-icon.cjs",
     "build": "electron-vite build",
-    "dist": "npm run build && electron-builder --win portable",
-    "pack:dir": "npm run build && electron-builder --dir",
-    "verify": "node scripts/verify-pack.mjs"
+    "dist": "npm run build && electron-builder --publish never",
+    "pack:dir": "npm run build && electron-builder --dir --publish never",
+    "verify": "node scripts/verify-pack.mjs",
+    "dist:win": "npm run build && electron-builder --win --x64 --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --publish never"
   },
   "devDependencies": {
     "@fontsource/courier-prime": "5.3.0",
@@ -42,5 +44,8 @@
     "vite": "8.3.5",
     "vitest": "5.0.5",
     "zustand": "5.0.16"
+  },
+  "engines": {
+    "node": ">=24"
   }
 }

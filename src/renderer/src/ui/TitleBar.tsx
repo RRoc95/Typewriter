@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { formatShortcut } from '../../../shared/menu'
 import markUrl from '../assets/mark.svg?url'
 
 type TitleBarProps = {
@@ -16,10 +17,10 @@ export function TitleBar({ menu, focus, studioOpen, onStudio, onFocus }: TitleBa
       {menu}
       <span className="spacer" />
       <div className="chips">
-        <button className="chip" data-active={focus} onClick={onFocus} title="Ctrl+Shift+F">
+        <button className="chip" data-active={focus} onClick={onFocus} title={formatShortcut('CmdOrCtrl+Shift+F', window.api.platform)}>
           专注
         </button>
-        <button className="chip" data-active={studioOpen} onClick={onStudio} title="Ctrl+,">
+        <button className="chip" data-active={studioOpen} onClick={onStudio} title={formatShortcut('CmdOrCtrl+,', window.api.platform)}>
           面板
         </button>
       </div>

@@ -1,7 +1,7 @@
 import { app, dialog, Menu, type BrowserWindow, type MenuItemConstructorOptions } from 'electron'
 import { join } from 'node:path'
 import { CH, type MenuCommand } from '../shared/ipc'
-import { MENU, type MenuItemSpec } from '../shared/menu'
+import { MENU, menuAccelerator, type MenuItemSpec } from '../shared/menu'
 import { getSettings } from './services/settingsStore'
 
 let builder: (() => void) | null = null
@@ -27,10 +27,11 @@ export function buildMenu(getWindow: () => BrowserWindow | null): void {
 
   const toItem = (spec: MenuItemSpec): MenuItemConstructorOptions => {
     if (spec.separator) return { type: 'separator' }
-    if (spec.edit) return { label: spec.label, role: ROLE_BY_EDIT[spec.edit], accelerator: spec.accelerator }
+    const accelerator = menuAccelerator(spec, process.platform)
+    if (spec.edit) return { label: spec.label, role: ROLE_BY_EDIT[spec.edit], accelerator }
 
     if (spec.command === 'quit') return { label: spec.label, role: 'quit' }
-    if (spec.command === 'fullscreen') return { label: spec.label, role: 'togglefullscreen', accelerator: spec.accelerator }
+    if (spec.command === 'fullscreen') return { label: spec.label, role: 'togglefullscreen', accelerator }
     if (spec.command === 'about') {
       return {
         label: spec.label,
@@ -39,7 +40,7 @@ export function buildMenu(getWindow: () => BrowserWindow | null): void {
             type: 'info',
             title: '关于打字机',
             message: `打字机 ${app.getVersion()}`,
-            detail: `面向 Windows 的纯文本编辑器。\n\n配置目录：${app.getPath('userData')}\n自动保存目录：${
+            detail: `面向 Windows 和 macOS 的纯文本编辑器。\n\n配置目录：${app.getPath('userData')}\n自动保存目录：${
               getSettings().autosave.fixedDir ?? join(app.getPath('documents'), '打字机')
             }`,
             buttons: ['好']
@@ -50,7 +51,7 @@ export function buildMenu(getWindow: () => BrowserWindow | null): void {
 
     return {
       label: spec.label,
-      accelerator: spec.accelerator,
+      accelerator,
       click: () => send(spec.command as MenuCommand)
     }
   }
@@ -71,6 +72,8 @@ export function buildMenu(getWindow: () => BrowserWindow | null): void {
     }
     return { label: group.label, submenu: items }
   })
+
+  if (process.platform === 'darwin') template.unshift({ role: 'appMenu' })
 
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
   builder = () => buildMenu(getWindow)

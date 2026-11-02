@@ -2,10 +2,10 @@ import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { isFontMagic, readFamily } from '../../src/main/services/sfnt'
 
-const TTF = ['C:\\Windows\\Fonts\\georgia.ttf', 'C:\\Windows\\Fonts\\consola.ttf'].find((file) =>
+const TTF = ['C:\\Windows\\Fonts\\georgia.ttf', 'C:\\Windows\\Fonts\\consola.ttf', '/System/Library/Fonts/Supplemental/Georgia.ttf'].find((file) =>
   existsSync(file)
 )
-const TTC = ['C:\\Windows\\Fonts\\simsun.ttc', 'C:\\Windows\\Fonts\\msyh.ttc'].find((file) =>
+const TTC = ['C:\\Windows\\Fonts\\simsun.ttc', 'C:\\Windows\\Fonts\\msyh.ttc', '/System/Library/Fonts/PingFang.ttc'].find((file) =>
   existsSync(file)
 )
 

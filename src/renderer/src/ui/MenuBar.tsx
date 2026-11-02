@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MenuCommand } from '../../../shared/ipc'
-import { MENU, type EditAction } from '../../../shared/menu'
+import { formatShortcut, MENU, menuAccelerator, type EditAction } from '../../../shared/menu'
 
 type Props = {
   onCommand: (command: MenuCommand) => void
@@ -59,7 +59,9 @@ export function MenuBar({ onCommand, onEdit }: Props) {
                     }}
                   >
                     <span>{item.label}</span>
-                    {item.accelerator && <kbd>{item.accelerator}</kbd>}
+                    {item.accelerator && (
+                      <kbd>{formatShortcut(menuAccelerator(item, window.api.platform)!, window.api.platform)}</kbd>
+                    )}
                   </button>
                 )
               )}

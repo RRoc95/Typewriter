@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FindStatus } from '../../../shared/ipc'
+import { formatShortcut } from '../../../shared/menu'
 import { useAppStore } from '../state/store'
 
 export function Toasts() {
@@ -27,7 +28,9 @@ export function Welcome({ show, recent, onOpenRecent }: WelcomeProps) {
   return (
     <div className="welcome" data-show={show} aria-hidden={!show}>
       <div className="mark">打字机</div>
-      <div className="sub">Ctrl+O 打开 · Ctrl+S 保存 · 直接开始打字</div>
+      <div className="sub">
+        {formatShortcut('CmdOrCtrl+O', window.api.platform)} 打开 · {formatShortcut('CmdOrCtrl+S', window.api.platform)} 保存 · 直接开始打字
+      </div>
       {recent.length > 0 && (
         <div className="recent">
           {recent.slice(0, 4).map((file) => (

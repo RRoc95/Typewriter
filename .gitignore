@@ -1,0 +1,11 @@
+node_modules/
+out/
+release/
+release-*/
+dist2/
+.build-cache/
+.npm-cache/
+artifacts/
+test-results/
+*.tsbuildinfo
+*.log

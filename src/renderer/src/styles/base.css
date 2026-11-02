@@ -1,0 +1,767 @@
+:root {
+  /* 结构性令牌（与主题无关） */
+  --tw-paper-w: min(760px, calc(100vw - 120px));
+  --tw-paper-pad-x: 64px;
+  --tw-paper-pad-y: 56px;
+  --tw-editor-font: "Courier Prime", "Source Han Serif SC", "Noto Serif SC", SimSun, Consolas, monospace;
+  --tw-editor-size: 18px;
+  --tw-editor-lh: 31px;
+  --tw-ease: cubic-bezier(0.22, 0.68, 0.28, 1);
+  --tw-snap: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* 主题默认值（paper-ink），运行时由 applyTheme 覆盖 */
+  --tw-room-wall-top: #2a211a;
+  --tw-room-wall-bottom: #171210;
+  --tw-room-desk: #3a2a1e;
+  --tw-room-vignette: 0.55;
+  --tw-room-vignette-color: #0b0806;
+  --tw-paper-base: #efe3c8;
+  --tw-paper-sheen: #f7efdc;
+  --tw-paper-edge: #d8c6a4;
+  --tw-paper-shadow: #20160e;
+  --tw-paper-texture-opacity: 0.5;
+  --tw-ink-text: #1b1713;
+  --tw-ink-muted: #6b5b45;
+  --tw-ink-caret: #2b2117;
+  --tw-ink-selection: #e3c88a;
+  --tw-ink-composition: #8a6b3f;
+  --tw-metal-body: #b0703c;
+  --tw-metal-body-hi: #d99a5e;
+  --tw-metal-body-lo: #6e4322;
+  --tw-metal-rail: #c9cdd2;
+  --tw-metal-bar: #8c9096;
+  --tw-metal-ribbon: #2a2a2c;
+  --tw-metal-keycap: #efe6d4;
+  --tw-metal-brass: #c9a227;
+  --tw-light-key: #ffd9a0;
+  --tw-light-intensity: 0.85;
+  --tw-light-cone: 34deg;
+  --tw-light-falloff: 1.9;
+  --tw-light-ambient: #6a5540;
+  --tw-light-gobo: none;
+  --tw-ui-serif: Georgia, serif;
+  --tw-ui-sans: DengXian, "Microsoft YaHei", system-ui, sans-serif;
+  --tw-ui-mono: Consolas, "Courier New", monospace;
+  --tw-ui-frame: #1b1713;
+  --tw-ui-panel: #221a14;
+  --tw-ui-panel-border: #3b2e23;
+  --tw-ui-text: #ede3ce;
+  --tw-ui-text-dim: #a08d74;
+  --tw-ui-accent: #c9a227;
+}
+
+[data-paper-width="letter"] {
+  --tw-paper-w: min(760px, calc(100vw - 120px));
+}
+
+[data-paper-width="full"] {
+  --tw-paper-w: calc(100vw - 24px);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--tw-room-wall-bottom);
+  color: var(--tw-ui-text);
+  font-family: var(--tw-ui-sans);
+  font-size: 13px;
+  overflow: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: var(--tw-ink-selection);
+}
+
+/* ---------- 布局 ---------- */
+
+.app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--tw-ui-frame);
+}
+
+.titlebar {
+  height: 40px;
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 148px 0 14px;
+  background: var(--tw-ui-frame);
+  border-bottom: 1px solid color-mix(in srgb, var(--tw-ui-panel-border) 60%, transparent);
+  -webkit-app-region: drag;
+  position: relative;
+  z-index: 30;
+  transition: opacity 0.26s, transform 0.26s var(--tw-ease);
+}
+
+.titlebar .mark {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  flex: 0 0 auto;
+  opacity: 0.95;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tw-ui-text) 12%, transparent);
+}
+
+.titlebar .doc-name {
+  font-family: var(--tw-ui-serif);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: var(--tw-ui-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 46%;
+}
+
+.titlebar .dirty-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tw-ui-accent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.titlebar .dirty-dot[data-dirty="true"] {
+  opacity: 1;
+}
+
+.titlebar .spacer {
+  flex: 1;
+}
+
+.titlebar .chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  -webkit-app-region: no-drag;
+}
+
+.chip {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1px solid var(--tw-ui-panel-border);
+  color: var(--tw-ui-text-dim);
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: color 0.16s, border-color 0.16s, background 0.16s;
+}
+
+.chip:hover {
+  color: var(--tw-ui-text);
+  border-color: var(--tw-ui-accent);
+}
+
+.chip[data-active="true"] {
+  color: var(--tw-ui-frame);
+  background: var(--tw-ui-accent);
+  border-color: var(--tw-ui-accent);
+}
+
+
+/* ---------- 菜单栏 ---------- */
+
+.menubar {
+  display: flex;
+  gap: 1px;
+  margin-left: 4px;
+  -webkit-app-region: no-drag;
+}
+
+.menubar-group {
+  position: relative;
+}
+
+.menubar-button {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--tw-ui-text-dim);
+  transition: background 0.14s, color 0.14s;
+}
+
+.menubar-button:hover {
+  color: var(--tw-ui-text);
+  background: color-mix(in srgb, var(--tw-ui-text) 8%, transparent);
+}
+
+.menubar-button[data-open='true'] {
+  color: var(--tw-ui-text);
+  background: color-mix(in srgb, var(--tw-ui-text) 12%, transparent);
+}
+
+.menubar-drop {
+  position: absolute;
+  top: 30px;
+  left: 0;
+  min-width: 222px;
+  padding: 5px;
+  background: var(--tw-ui-panel);
+  border: 1px solid var(--tw-ui-panel-border);
+  border-radius: 8px;
+  box-shadow: 0 22px 50px -22px rgba(0, 0, 0, 0.9);
+  z-index: 60;
+}
+
+.menubar-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 6px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--tw-ui-text);
+  text-align: left;
+}
+
+.menubar-item:hover {
+  background: color-mix(in srgb, var(--tw-ui-accent) 18%, transparent);
+}
+
+.menubar-item kbd {
+  font: inherit;
+  font-size: 10.5px;
+  color: var(--tw-ui-text-dim);
+  opacity: 0.85;
+}
+
+.menubar-sep {
+  height: 1px;
+  margin: 5px 8px;
+  background: color-mix(in srgb, var(--tw-ui-panel-border) 85%, transparent);
+}
+
+/* ---------- 标签栏 ---------- */
+
+.tabbar {
+  height: 36px;
+  flex: 0 0 36px;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 0 10px;
+  background: var(--tw-ui-frame);
+  border-bottom: 1px solid color-mix(in srgb, var(--tw-ui-panel-border) 60%, transparent);
+  z-index: 29;
+  transition: opacity 0.26s, transform 0.26s var(--tw-ease);
+}
+
+.tabbar-strip {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+  height: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabbar-strip::-webkit-scrollbar {
+  height: 0;
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  max-width: 200px;
+  min-width: 104px;
+  padding: 0 6px 0 11px;
+  border-radius: 7px 7px 0 0;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  color: var(--tw-ui-text-dim);
+  font-size: 12px;
+  flex: 0 0 auto;
+  transition: background 0.14s, color 0.14s;
+}
+
+.tab:hover {
+  background: color-mix(in srgb, var(--tw-ui-text) 6%, transparent);
+  color: var(--tw-ui-text);
+}
+
+.tab[data-active='true'] {
+  background: var(--tw-ui-panel);
+  border-color: var(--tw-ui-panel-border);
+  color: var(--tw-ui-text);
+}
+
+.tab[data-active='true']::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: var(--tw-ui-panel);
+}
+
+.tab-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-dirty {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tw-ui-accent);
+  opacity: 0;
+  flex: 0 0 auto;
+}
+
+.tab-dirty[data-dirty='true'] {
+  opacity: 1;
+}
+
+.tab-close {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: inherit;
+  opacity: 0.55;
+}
+
+.tab:hover .tab-close,
+.tab[data-active='true'] .tab-close {
+  opacity: 0.75;
+}
+
+.tab-close:hover {
+  background: color-mix(in srgb, var(--tw-ui-text) 14%, transparent);
+  opacity: 1;
+}
+
+.tab-close svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.tab-new {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--tw-ui-text-dim);
+}
+
+.tab-new:hover {
+  background: color-mix(in srgb, var(--tw-ui-text) 9%, transparent);
+  color: var(--tw-ui-text);
+}
+
+.tab-new svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+/* ---------- 状态栏 ---------- */
+
+.statusbar {
+  height: 30px;
+  flex: 0 0 30px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px;
+  background: var(--tw-ui-frame);
+  border-top: 1px solid color-mix(in srgb, var(--tw-ui-panel-border) 60%, transparent);
+  color: var(--tw-ui-text-dim);
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  z-index: 30;
+  transition: opacity 0.26s, transform 0.26s var(--tw-ease);
+}
+
+.statusbar .save-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: default;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.statusbar .save-state[data-phase="error"] {
+  color: #e0776b;
+  cursor: pointer;
+}
+
+.statusbar .save-state[data-phase="dirty"] {
+  color: var(--tw-ui-accent);
+}
+
+.statusbar > span {
+  flex: 0 0 auto;
+}
+
+.statusbar .grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.statusbar .path {
+  flex: 0 1 auto;
+  min-width: 80px;
+  max-width: 34%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: right;
+  opacity: 0.72;
+  cursor: pointer;
+}
+
+.statusbar .path:hover {
+  opacity: 1;
+  color: var(--tw-ui-text);
+}
+
+/* ---------- 查找条 ---------- */
+
+.findbar {
+  position: absolute;
+  top: 48px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--tw-ui-panel);
+  border: 1px solid var(--tw-ui-panel-border);
+  border-radius: 7px;
+  box-shadow: 0 12px 32px -16px rgba(0, 0, 0, 0.8);
+  z-index: 50;
+}
+
+.findbar input {
+  width: 180px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--tw-ui-panel-border);
+  background: color-mix(in srgb, var(--tw-ui-frame) 70%, transparent);
+  color: var(--tw-ui-text);
+  outline: none;
+}
+
+.findbar input:focus {
+  border-color: var(--tw-ui-accent);
+}
+
+.findbar .count {
+  min-width: 52px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--tw-ui-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.findbar button {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--tw-ui-text-dim);
+  font-size: 12px;
+}
+
+.findbar button:hover {
+  background: color-mix(in srgb, var(--tw-ui-accent) 18%, transparent);
+  color: var(--tw-ui-text);
+}
+
+/* ---------- Toast ---------- */
+
+.toasts {
+  position: absolute;
+  bottom: 44px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.toast {
+  padding: 8px 16px;
+  border-radius: 6px;
+  background: var(--tw-ui-panel);
+  border: 1px solid var(--tw-ui-panel-border);
+  color: var(--tw-ui-text);
+  font-size: 12px;
+  box-shadow: 0 16px 40px -20px rgba(0, 0, 0, 0.9);
+  animation: toast-in 0.22s var(--tw-ease);
+  max-width: 60vw;
+}
+
+.toast[data-kind="error"] {
+  border-color: #b5504a;
+  color: #f0a79f;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* ---------- 模态 ---------- */
+
+.modal-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 70;
+}
+
+.modal {
+  width: 420px;
+  background: var(--tw-ui-panel);
+  border: 1px solid var(--tw-ui-panel-border);
+  border-radius: 9px;
+  padding: 22px 22px 18px;
+  box-shadow: 0 32px 80px -32px rgba(0, 0, 0, 0.9);
+}
+
+.modal h2 {
+  margin: 0 0 8px;
+  font-family: var(--tw-ui-serif);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--tw-ui-text);
+}
+
+.modal p {
+  margin: 0 0 18px;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--tw-ui-text-dim);
+}
+
+.modal .actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---------- 欢迎层 ---------- */
+
+.welcome {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  pointer-events: none;
+  color: var(--tw-ink-muted);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.welcome[data-show="true"] {
+  opacity: 0.75;
+}
+
+.welcome .mark {
+  font-family: var(--tw-ui-serif);
+  font-size: 26px;
+  letter-spacing: 0.32em;
+  text-indent: 0.32em;
+}
+
+.welcome .sub {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+
+.welcome .recent {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+  max-width: 420px;
+}
+
+.welcome .recent button {
+  font-size: 12px;
+  color: var(--tw-ink-muted);
+  padding: 3px 10px;
+  border-radius: 4px;
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+}
+
+.welcome .recent button:hover {
+  background: color-mix(in srgb, var(--tw-ink-text) 8%, transparent);
+  color: var(--tw-ink-text);
+}
+
+/* ---------- 右键菜单 ---------- */
+
+.context-menu {
+  position: fixed;
+  min-width: 150px;
+  padding: 5px;
+  background: var(--tw-ui-panel);
+  border: 1px solid var(--tw-ui-panel-border);
+  border-radius: 6px;
+  box-shadow: 0 20px 48px -20px rgba(0, 0, 0, 0.9);
+  z-index: 80;
+}
+
+.context-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--tw-ui-text);
+}
+
+.context-menu button:hover {
+  background: color-mix(in srgb, var(--tw-ui-accent) 22%, transparent);
+}
+
+.context-menu hr {
+  border: 0;
+  border-top: 1px solid var(--tw-ui-panel-border);
+  margin: 5px 2px;
+}
+
+/* ---------- 专注模式 ---------- */
+
+.app[data-focus="true"] .titlebar {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-100%);
+}
+
+.app[data-focus="true"] .statusbar {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(100%);
+}
+
+/* 鼠标移到窗口上下边缘时，把界面外壳滑回来 */
+.app[data-focus="true"][data-chrome="true"] .titlebar,
+.app[data-focus="true"][data-chrome="true"] .statusbar {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+/* 常驻的退出入口：顶栏藏起来了，必须留一个看得见、点得到的出口 */
+.focus-exit {
+  position: absolute;
+  top: 12px;
+  right: 18px;
+  z-index: 45;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--tw-ui-text) 18%, transparent);
+  background: color-mix(in srgb, var(--tw-ui-panel) 66%, transparent);
+  color: var(--tw-ui-text);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  opacity: 0.42;
+  transition: opacity 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.focus-exit:hover {
+  opacity: 1;
+  border-color: var(--tw-ui-accent);
+  background: color-mix(in srgb, var(--tw-ui-panel) 88%, transparent);
+}
+
+.focus-exit kbd {
+  font: inherit;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid color-mix(in srgb, var(--tw-ui-text) 24%, transparent);
+  opacity: 0.85;
+}
+
+@media (max-width: 900px) {
+  .studio {
+    width: 320px;
+  }
+}

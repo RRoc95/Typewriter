@@ -1,0 +1,42 @@
+appId: com.typewriter.editor
+productName: Typewriter
+copyright: Copyright © 2026 Typewriter
+
+directories:
+  output: release
+  buildResources: build
+
+asar: true
+compression: maximum
+# 只带中英文语言包，其余 50 多个 .pak 是死重量
+electronLanguages:
+  - zh-CN
+  - en-US
+
+files:
+  - out/**/*
+  - package.json
+  - "!**/*.map"
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.ico
+  requestedExecutionLevel: asInvoker
+  artifactName: Typewriter-${version}-Setup.${ext}
+
+# 一键安装到 %LOCALAPPDATA%\Programs\Typewriter，装完即可用；
+# 不用 portable：portable 每次启动都要把 330MB 解压到临时目录，实测要 18 秒。
+nsis:
+  oneClick: true
+  perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: 打字机
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+  artifactName: Typewriter-${version}-Setup.${ext}

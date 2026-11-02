@@ -81,6 +81,9 @@ test('编辑器可输入、主题切换不重建 DOM、字数进状态栏', asyn
 })
 
 test('木屋主题保留编辑状态、加载素材、动画可降级并持久化', async () => {
+  // Keep one native editor across three scenes, window changes and a restart.
+  // Software rendering needs a larger total budget; assertion timeouts stay unchanged.
+  if (process.env.CI) test.setTimeout(300_000)
   const { app, win, userData } = await launch()
   const errors: string[] = []
   win.on('pageerror', (error) => errors.push(error.message))

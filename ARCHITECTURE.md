@@ -32,7 +32,7 @@ main、preload、renderer → src/shared/* 的共享定义
 3. `src/main/window.ts` 恢复可见屏幕内的窗口位置，加载预加载脚本；开发时读取 `ELECTRON_RENDERER_URL`，构建后加载本地 HTML。Windows 使用标题栏 overlay，Mac 使用 `hiddenInset` 与原生窗口按钮；窗口在 `ready-to-show` 显示，页面加载完成后启动主进程自动保存时钟，关闭后停止时钟。
 4. `src/renderer/src/main.tsx` 以 React `StrictMode` 挂载 `App`。`App.tsx` 注册字体，通过桥获取设置、应用目录和最近文件，建立初始标签与编辑引擎；就绪后拉取一次性启动载荷。
 5. 关窗及显式退出均经过渲染层保存/失败确认。`before-quit` 记录退出意图；`closeReady(true)` 销毁窗口，有退出意图时继续退出，取消则清除意图。Windows 最后窗口关闭后退出，Mac 继续驻留并在 `activate` 时使用最新设置重开窗口。
-6. Mac 的 `open-file` 监听在 ready 前注册；冷启动文件经一次性启动载荷读取，运行时转交现有窗口，无窗口时创建窗口后拉取载荷。菜单增加 Mac 应用菜单，公共操作使用 `CmdOrCtrl`，重做及快捷键显示由共享菜单函数处理。
+6. Mac 的 `open-file` 监听在 ready 前注册；冷启动文件经一次性启动载荷读取，运行时转交现有窗口，无窗口时创建窗口后拉取载荷。菜单增加 Mac 应用菜单，公共操作使用 `CmdOrCtrl`，重做及快捷键显示由共享菜单函数处理。每个窗口的 `before-input-event` 从同一菜单规格解析应用命令并阻止重复处理；普通文字、组字与原生编辑角色沿用既有输入路径。
 
 ## 4. 编辑、标签与舞台
 
@@ -79,7 +79,7 @@ main/services/autosaveClock.ts 每秒发送 tick，窗口失焦另发 blur tick
 
 `electron-builder.yml` 从 `out/**/*` 与 `package.json` 打包到 `release/`。Windows x64 生成 NSIS 和 ZIP，用户级安装且卸载保留应用数据；Mac 按所选 arm64/x64 架构生成 DMG 和 ZIP，使用高分辨率图标源，当前不做开发者签名或公证。`dist` 选择当前平台，显式平台命令见 [命令说明](AGENTS.md#7-常用命令)，均不自动发布 Release。`pack:dir` 仅生成宿主平台的应用目录。
 
-`.github/workflows/build.yml` 在 Windows、Apple Silicon Mac 与 Intel Mac 原生 runner 使用 Node.js 24，依次执行类型检查、lint、单测、Electron E2E、图标生成、打包和产物启动验证，上传安装包/归档与诊断截图。`TW_E2E=1` 且处于 CI 时使用 SwiftShader 软件 WebGL，保留场景与控制台错误断言，正常应用继续使用系统图形后端。
+`.github/workflows/build.yml` 在 Windows、Apple Silicon Mac 与 Intel Mac 原生 runner 使用 Node.js 24，依次执行类型检查、lint、单测、Electron E2E、图标生成、打包和产物启动验证，上传安装包/归档与诊断截图。`TW_E2E=1` 且处于 CI 时使用 SwiftShader 软件 WebGL，保留场景与控制台错误断言，同时使用 Playwright 常规的后台节流控制以适配虚拟桌面。正常应用继续使用系统图形后端；装饰动画仍由原生窗口活动状态控制暂停。
 
 | 修改内容 | 优先查看 |
 | --- | --- |

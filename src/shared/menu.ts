@@ -20,6 +20,33 @@ export type MenuGroupSpec = {
   items: MenuItemSpec[]
 }
 
+export type CommandKeyInput = {
+  type: string
+  key: string
+  control: boolean
+  meta: boolean
+  shift: boolean
+  alt: boolean
+  isComposing?: boolean
+}
+
+/** Resolve command shortcuts from the same definitions as both menus. */
+export function commandForKeyInput(input: CommandKeyInput, platform: string): MenuCommand | undefined {
+  if (input.type !== 'keyDown' || input.isComposing) return undefined
+  for (const group of MENU) {
+    for (const item of group.items) {
+      if (!item.command || !item.accelerator) continue
+      const parts = item.accelerator.replace('CmdOrCtrl', platform === 'darwin' ? 'Meta' : 'Ctrl').split('+')
+      const key = parts.pop()!
+      if (key.toLowerCase() !== input.key.toLowerCase()) continue
+      if (input.control !== parts.includes('Ctrl') || input.meta !== parts.includes('Meta')) continue
+      if (input.shift !== parts.includes('Shift') || input.alt !== parts.includes('Alt')) continue
+      return item.command
+    }
+  }
+  return undefined
+}
+
 export function menuAccelerator(item: MenuItemSpec, platform: string): string | undefined {
   if (platform === 'darwin' && item.edit === 'redo') return 'CmdOrCtrl+Shift+Z'
   return item.accelerator

@@ -3,6 +3,7 @@ import { app, BrowserWindow, screen, shell } from 'electron'
 import { CH } from '../shared/ipc'
 import type { Bounds, SettingsV1 } from '../shared/settings'
 import { THEMES } from '../shared/theme-tokens'
+import { installCommandShortcuts } from './menu'
 import { pathGuard } from './security/pathGuard'
 import { startAutosaveClock, stopAutosaveClock, tickNow } from './services/autosaveClock'
 import { patchSettings } from './services/settingsStore'
@@ -77,6 +78,7 @@ export async function createMainWindow(settings: SettingsV1): Promise<BrowserWin
 
   mainWindow = win
   closeAllowed = false
+  installCommandShortcuts(win)
 
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   win.webContents.on('will-navigate', (event) => {

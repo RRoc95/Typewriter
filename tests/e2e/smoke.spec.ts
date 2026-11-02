@@ -20,7 +20,25 @@ async function activateWindow(app: ElectronApplication): Promise<void> {
     const win = BrowserWindow.getAllWindows()[0]
     win.show()
     win.focus()
+    win.webContents.focus()
   })
+  await (await app.firstWindow()).bringToFront()
+  await expect.poll(() => app.evaluate(({ BrowserWindow }) =>
+    BrowserWindow.getAllWindows()[0].isFocused()
+  )).toBe(true)
+}
+
+async function pressCommand(app: ElectronApplication, keyCode: string, shift = false): Promise<void> {
+  await activateWindow(app)
+  const primary: 'meta' | 'control' = process.platform === 'darwin' ? 'meta' : 'control'
+  // Application accelerators need Electron input; CDP keys only target the DOM.
+  await app.evaluate(({ BrowserWindow }, { keyCode, primary, shift }) => {
+    const modifiers: ('meta' | 'control' | 'shift')[] = [primary]
+    if (shift) modifiers.push('shift')
+    const contents = BrowserWindow.getAllWindows()[0].webContents
+    contents.sendInputEvent({ type: 'keyDown', keyCode, modifiers })
+    contents.sendInputEvent({ type: 'keyUp', keyCode, modifiers })
+  }, { keyCode, primary, shift })
 }
 
 async function launch(userData?: string) {
@@ -37,6 +55,7 @@ async function launch(userData?: string) {
   runningApps.add(app)
   app.once('close', () => runningApps.delete(app))
   const win = await app.firstWindow()
+  await win.waitForLoadState('load')
   await win.waitForSelector('[data-testid="editor"]', { timeout: 40_000 })
   await activateWindow(app)
   return { app, win, userData: dir }
@@ -88,10 +107,13 @@ test('木屋主题保留编辑状态、加载素材、动画可降级并持久�
   const errors: string[] = []
   win.on('pageerror', (error) => errors.push(error.message))
   win.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()) })
-  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1498, 1050))
-  // macOS can clamp the native window to the display; emulate the design viewport
-  // so visual comparisons use the same pixel dimensions on smaller displays.
-  await win.setViewportSize({ width: 1498, height: 1050 })
+  const [viewportWidth] = await app.evaluate(({ BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0]
+    window.setContentSize(1498, 1050)
+    return window.getContentSize()
+  })
+  // Use the actual native viewport: hosted Mac displays may clamp the window.
+  await expect.poll(() => win.evaluate(() => window.innerWidth)).toBe(viewportWidth)
   await win.emulateMedia({ reducedMotion: 'no-preference' })
   const editor = win.getByTestId('editor')
   const originalEditor = await editor.elementHandle()
@@ -116,7 +138,7 @@ test('木屋主题保留编辑状态、加载素材、动画可降级并持久�
     const frame = await flame.evaluate((node) => getComputedStyle(node).transform)
     await expect.poll(() => flame.evaluate((node) => getComputedStyle(node).transform)).not.toBe(frame)
     // Capture after the panel's width transition and the stage's geometry settle.
-    await expect.poll(() => win.locator('.viewport').evaluate((node) => Math.round(node.getBoundingClientRect().width))).toBe(1498)
+    await expect.poll(() => win.locator('.viewport').evaluate((node) => Math.round(node.getBoundingClientRect().width))).toBe(viewportWidth)
     await expect(win.locator('.toast')).toHaveCount(0)
     await win.screenshot({ path: `artifacts/rooms/${theme}.png`, scale: 'css' })
     await expect.poll(async () => JSON.parse(await readFile(join(userData, 'settings.json'), 'utf8')).theme).toBe(theme)
@@ -145,7 +167,7 @@ test('木屋主题保留编辑状态、加载素材、动画可降级并持久�
   await expect(win.locator('.room-backdrop')).toHaveAttribute('data-paused', 'false')
 
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(900, 700))
-  await win.setViewportSize({ width: 900, height: 700 })
+  await expect.poll(() => win.evaluate(() => window.innerWidth)).toBe(900)
   await win.click('.titlebar .chip:nth-child(2)')
   await expect(win.getByTestId('theme-candlelit-study')).toHaveAttribute('data-active', 'true')
   await win.screenshot({ path: 'artifacts/rooms/narrow-panel.png', scale: 'css' })
@@ -163,9 +185,11 @@ test('木屋主题保留编辑状态、加载素材、动画可降级并持久�
   await expect(restored.win.locator('html')).toHaveAttribute('data-room', 'false')
   await expect(restored.win.locator('.titlebar')).toHaveCSS('background-image', 'none')
   await restored.win.getByTestId('theme-green-baize').click()
+  await expect(restored.win.locator('html')).toHaveAttribute('data-theme', 'green-baize')
   await restored.win.click('.studio-head .icon-btn')
   for (const theme of ROOM_THEME_IDS) {
-    await restored.win.keyboard.press(process.platform === 'darwin' ? 'Meta+Shift+t' : 'Control+Shift+t')
+    await restored.win.getByTestId('editor').focus()
+    await pressCommand(restored.app, 'T', true)
     await expect(restored.win.locator('html')).toHaveAttribute('data-theme', theme)
   }
   expect(errors).toEqual([])
@@ -285,15 +309,28 @@ test('菜单栏：文件菜单可以新建标签页', async () => {
 })
 
 test('平台保存快捷键写入隔离文档目录', async () => {
-  const { app, win, userData } = await launch()
+  const userData = await mkdtemp(join(tmpdir(), 'tw-shortcut-'))
+  await writeFile(join(userData, 'settings.json'), JSON.stringify({ autosave: { enabled: false } }))
+  const { app, win } = await launch(userData)
   await win.locator('[data-testid="editor"]').click()
   await win.keyboard.insertText('快捷键保存测试')
-  await win.keyboard.press(process.platform === 'darwin' ? 'Meta+s' : 'Control+s')
+  await pressCommand(app, 'S')
   await expect(win.locator('.save-state')).toHaveAttribute('data-phase', 'saved')
   const filePath = await win.locator('.statusbar .path').getAttribute('title')
   expect(filePath).toBeTruthy()
   expect(filePath!.startsWith(join(userData, 'Documents'))).toBe(true)
   expect(await readFile(filePath!, 'utf8')).toBe('快捷键保存测试')
+  await app.close()
+})
+
+test('平台主题快捷键每次只切换一套', async () => {
+  const { app, win } = await launch()
+  const editor = win.getByTestId('editor')
+  await editor.focus()
+  await pressCommand(app, 'T', true)
+  await expect(win.locator('html')).toHaveAttribute('data-theme', 'midnight-study')
+  await pressCommand(app, 'T', true)
+  await expect(win.locator('html')).toHaveAttribute('data-theme', 'moonlit-poetry')
   await app.close()
 })
 

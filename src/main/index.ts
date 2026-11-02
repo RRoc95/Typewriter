@@ -17,6 +17,13 @@ if (process.env.TW_E2E === '1' && process.env.CI) {
   app.commandLine.appendSwitch('use-angle', 'swiftshader')
   app.commandLine.appendSwitch('enable-unsafe-swiftshader')
   app.commandLine.appendSwitch('force-device-scale-factor', '1')
+  // Match Playwright's browser test controls for virtual/occluded desktops.
+  // Decorative motion still pauses through the application's native activity events.
+  for (const name of [
+    'disable-backgrounding-occluded-windows',
+    'disable-background-timer-throttling',
+    'disable-renderer-backgrounding'
+  ]) app.commandLine.appendSwitch(name)
 }
 
 if (process.env.TW_USER_DATA) {

@@ -2,7 +2,7 @@
 
 Status: active
 Created: 2026-11-02T16:47:05+08:00
-Last Updated: 2026-11-02T20:01:08+08:00
+Last Updated: 2026-11-02T20:38:49+08:00
 
 本 ExecPlan 是 living document。执行过程中持续更新进度、发现、决策、验证与结果，遵循根 `PLANS.md`。
 
@@ -19,6 +19,13 @@ Last Updated: 2026-11-02T20:01:08+08:00
 - [ ] 核对产物、更新使用文档与架构说明，归档计划并交付仓库和运行链接。
 
 ## Surprises & Discoveries
+
+- Observation: CDP 键盘事件到达 DOM，但没有经过 Electron before-input-event，也没有派发自定义菜单命令；原生 sendInputEvent 能经过该入口。
+  Evidence: 独立输入探针中两种 CDP 大小写组合的 commands 均为空；原生输入在命令路由启用时发送一次 themeNext，禁用后不再发送。
+  Impact: 命令层从共享 MENU 处理原生输入并阻止重复；E2E 用原生输入验证应用快捷键，禁用自动保存后验证保存键，保留 DOM 输入验证 textarea 撤销。
+- Observation: 托管桌面的 CSS 动画时间停住，且模拟大于原生显示尺寸的 viewport 导致不稳定交互。
+  Evidence: run 41442095703 中 Windows/arm64 的 transform 不变，Intel 在已点击按钮后等待导航超时。
+  Impact: 使用 Playwright 标准的后台节流控制、显式窗口/页面激活、初始 load 完成和实际原生 viewport；动画帧差异断言保持不变。
 
 - Observation: 首次远端运行在慢速 runner 暴露标签标题与自动保存竞争、退出遇到进行中写入，以及 Intel Mac 虚拟 GPU 上下文失败。
   Evidence: run 41418855410；Windows 与 arm64 的标签断言为“未命名”、退出等待超时；Intel 完成打包但出现 WebGL context BindToCurrentSequence 错误。
@@ -133,6 +140,8 @@ Working directory: repository root.
 源码基线已在本地 Git 保存。构建产物可从源码重建，测试使用临时数据目录。已存在的远端先读取再决定下一步，不覆盖历史、不强推；失败提交以修复提交推进。Actions 失败先读取具体日志，再调整代码或环境并重跑受影响项。没有购买、付费服务或其他不可逆数据迁移。
 
 ## Artifacts and Notes
+
+最新检查：typecheck/lint 通过；单测 74 passed / 1 skipped；原生保存与单次主题轮换两项 E2E 通过（25.5 秒），完整 11 项流程与新云端矩阵继续验证。
 
 纳入新主题后的检查：typecheck 与 lint 通过；单测 70 passed / 1 skipped。软件 WebGL 首轮 E2E 9 passed / 1 failed，唯一失败是新动画用例在失焦后仍期望运行；已为用例加入明确前台激活，按同样的 CI 环境复测。
 

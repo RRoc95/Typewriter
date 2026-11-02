@@ -1,7 +1,7 @@
 import { app, dialog, Menu, type BrowserWindow, type MenuItemConstructorOptions } from 'electron'
 import { join } from 'node:path'
 import { CH, type MenuCommand } from '../shared/ipc'
-import { MENU, menuAccelerator, type MenuItemSpec } from '../shared/menu'
+import { commandForKeyInput, MENU, menuAccelerator, type MenuItemSpec } from '../shared/menu'
 import { getSettings } from './services/settingsStore'
 
 let builder: (() => void) | null = null
@@ -15,10 +15,18 @@ const ROLE_BY_EDIT = {
   selectAll: 'selectAll'
 } as const
 
-/**
- * 原生菜单只负责三件事：快捷键、编辑动作、以及「最近文件」这类动态项。
- * 界面上那个可见的「文件 / 编辑 / 查看」直接复用同一份 MENU 规格。
- */
+export function installCommandShortcuts(win: BrowserWindow): void {
+  win.webContents.on('before-input-event', (event, input) => {
+    const command = commandForKeyInput(input, process.platform)
+    if (!command) return
+    // Prevent both DOM delivery and native menu handling of the same key.
+    // Native edit roles and IME input keep their existing paths.
+    event.preventDefault()
+    win.webContents.send(CH.MENU_COMMAND, command)
+  })
+}
+
+/** 原生菜单与可见菜单共用 MENU；命令快捷键从同一规格派发。 */
 export function buildMenu(getWindow: () => BrowserWindow | null): void {
   const send = (command: MenuCommand, payload?: string): void => {
     const win = getWindow()

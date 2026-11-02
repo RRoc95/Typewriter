@@ -1,0 +1,122 @@
+/* Wood textures and fire sprites are local assets; all labels remain real UI. */
+[data-room="true"] :is(.titlebar, .tabbar, .statusbar) {
+  background-color: var(--tw-ui-frame);
+  background-image: url('../assets/rooms/wood-trim.png');
+  background-size: auto 100%;
+  background-position: center;
+  background-blend-mode: soft-light;
+  border-color: var(--tw-ui-panel-border);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--tw-ui-accent) 24%, transparent),
+    inset 0 -2px 4px color-mix(in srgb, var(--tw-room-vignette-color) 55%, transparent);
+}
+
+[data-room="true"] :is(.menubar-button, .chip, .tab, .statusbar) {
+  text-shadow: 0 1px 2px var(--tw-ui-frame);
+}
+
+[data-room="true"] .tab[data-active="true"] {
+  background-color: var(--tw-ui-panel);
+  border-color: var(--tw-ui-accent);
+  box-shadow: inset 0 1px 6px color-mix(in srgb, var(--tw-ui-accent) 20%, transparent);
+}
+
+[data-room="true"] .chip {
+  border-color: var(--tw-ui-panel-border);
+  background: color-mix(in srgb, var(--tw-ui-frame) 80%, transparent);
+}
+
+[data-room="true"] .chip[data-active="true"] {
+  background: var(--tw-ui-accent);
+  text-shadow: none;
+}
+
+.room-backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: var(--tw-room-wall-top);
+}
+
+.room-wing {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  overflow: hidden;
+}
+
+.room-wing-left { left: 0; }
+.room-wing-right { right: 0; }
+
+.room-image {
+  position: absolute;
+  height: 100%;
+  width: auto;
+  max-width: none;
+}
+
+.room-wing-left .room-image { left: 0; }
+.room-wing-right .room-image { right: 0; }
+
+.room-fire {
+  position: absolute;
+  pointer-events: none;
+}
+
+.room-flame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 92%;
+}
+
+.room-flame-main {
+  animation: candle-sway 2.7s ease-in-out infinite;
+}
+
+.room-flame-glow {
+  opacity: 0.28;
+  filter: blur(12px);
+  transform: scale(2.6, 1.8);
+  animation: firelight-breathe 4.1s ease-in-out infinite;
+}
+
+[data-kind="hearth"] .room-flame-main {
+  animation: hearth-sway 3.7s ease-in-out infinite;
+}
+
+[data-kind="hearth"] .room-flame-glow {
+  filter: blur(18px);
+  transform: scale(1.8, 1.3);
+}
+
+@keyframes candle-sway {
+  0%, 100% { transform: rotate(-3deg) scale(0.96, 1); opacity: 0.92; }
+  23% { transform: rotate(3deg) scale(1.04, 0.93); opacity: 1; }
+  49% { transform: rotate(-1deg) scale(0.93, 1.05); opacity: 0.94; }
+  76% { transform: rotate(2deg) scale(1.02, 0.98); opacity: 0.98; }
+}
+
+@keyframes hearth-sway {
+  0%, 100% { transform: skewX(-2deg) scale(1, 0.96); opacity: 0.94; }
+  31% { transform: skewX(2deg) scale(1.02, 1.04); opacity: 1; }
+  61% { transform: skewX(-1deg) scale(0.98, 0.92); opacity: 0.9; }
+  82% { transform: skewX(1deg) scale(1.01, 1.02); opacity: 0.98; }
+}
+
+@keyframes firelight-breathe {
+  0%, 100% { opacity: 0.2; }
+  38% { opacity: 0.32; }
+  71% { opacity: 0.24; }
+}
+
+.room-backdrop[data-paused="true"] .room-flame,
+.room-backdrop[data-inactive="true"] .room-flame {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .room-flame { animation: none !important; }
+}

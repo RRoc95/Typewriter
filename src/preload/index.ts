@@ -77,6 +77,7 @@ const api: Api = {
     }
   },
   onTick: (cb) => subscribe(CH.AUTOSAVE_TICK, cb),
+  onWindowActivity: (cb) => subscribe(CH.WIN_ACTIVITY, cb),
   onRequestClose: (cb) => subscribe<void>(CH.WIN_REQUEST_CLOSE, () => cb()),
   onMenu: (cb) => {
     const listener = (_event: unknown, command: string, payload?: string): void => {

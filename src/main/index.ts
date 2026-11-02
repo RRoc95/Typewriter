@@ -10,6 +10,15 @@ import { getSettings, loadSettings } from './services/settingsStore'
 import { createMainWindow, getMainWindow, requestQuit } from './window'
 import { pathGuard } from './security/pathGuard'
 
+// Hosted runners lack a reliable native GPU. Keep real WebGL rendering in
+// automated checks using Chromium's software backend, with the sandbox intact.
+if (process.env.TW_E2E === '1' && process.env.CI) {
+  app.commandLine.appendSwitch('use-gl', 'angle')
+  app.commandLine.appendSwitch('use-angle', 'swiftshader')
+  app.commandLine.appendSwitch('enable-unsafe-swiftshader')
+  app.commandLine.appendSwitch('force-device-scale-factor', '1')
+}
+
 if (process.env.TW_USER_DATA) {
   app.setPath('userData', process.env.TW_USER_DATA)
   if (process.env.TW_E2E === '1') {

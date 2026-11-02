@@ -15,6 +15,7 @@ import { BUNDLED_FONTS } from '../fonts/catalog'
 import { registerCustomFonts, unregisterCustomFont } from '../fonts/loader'
 import { detectSystemFonts } from '../fonts/probe'
 import { useAppStore, type StudioTab } from '../state/store'
+import { roomSceneFor } from '../stage/roomScenes'
 
 const TEXTURE_LABEL: Record<string, string> = {
   plain: '素纸',
@@ -76,6 +77,7 @@ function usePatch() {
 }
 
 function ThemeThumb({ theme }: { theme: ThemeTokens }) {
+  const scene = roomSceneFor(theme.id)
   const style = {
     '--t-room-a': theme.room.wallTop,
     '--t-room-b': theme.room.wallBottom,
@@ -89,7 +91,10 @@ function ThemeThumb({ theme }: { theme: ThemeTokens }) {
 
   return (
     <span className="thumb" style={style} aria-hidden="true">
-      <span className="thumb-room" />
+      <span
+        className="thumb-room"
+        style={scene ? { backgroundImage: `url("${scene.image}")`, backgroundSize: 'cover' } : undefined}
+      />
       <span className="thumb-glow" />
       <span className="thumb-paper">
         <i style={{ width: '74%' }} />

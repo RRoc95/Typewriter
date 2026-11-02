@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { ROOM_THEME_IDS } from '../../src/shared/theme-tokens'
 import {
   clampSettings,
   DEFAULT_SETTINGS,
@@ -35,6 +36,11 @@ describe('clampSettings', () => {
     expect(settings.theme).toBe(DEFAULT_SETTINGS.theme)
     expect(settings.paperTexture).toBe(DEFAULT_SETTINGS.paperTexture)
     expect(settings.sound.preset).toBe(DEFAULT_SETTINGS.sound.preset)
+  })
+
+  it.each(ROOM_THEME_IDS)('接受并保留木屋主题 %s', (theme) => {
+    const saved = JSON.parse(JSON.stringify(clampSettings({ theme })))
+    expect(clampSettings(saved).theme).toBe(theme)
   })
 
   it('剥离未知键', () => {

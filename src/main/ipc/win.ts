@@ -1,16 +1,19 @@
 import { app, dialog, Menu } from 'electron'
 import { join } from 'node:path'
-import { CH, type AppInfo, type FindRequest, type ThemeBarRequest } from '../../shared/ipc'
+import { CH, type AppInfo, type FindRequest, type ThemeBarRequest, type WindowState } from '../../shared/ipc'
 import type { EditAction } from '../../shared/menu'
 import { getSettings } from '../services/settingsStore'
-import { finishWindowClose, getMainWindow, syncTitleBar } from '../window'
+import { finishWindowClose, getMainWindow, isWindowActive, syncTitleBar } from '../window'
 import { ensureAuthorizedDirectory } from './file'
 import { handle } from './handle'
 
 let lastQuery = ''
 
 export function registerWinIpc(): void {
-  handle<void, { bounds: unknown; maximized: boolean }>(CH.WIN_GET_STATE, () => getSettings().window)
+  handle<void, WindowState>(CH.WIN_GET_STATE, () => ({
+    ...getSettings().window,
+    active: isWindowActive()
+  }))
 
   handle<{ saved: boolean }, null>(CH.WIN_CLOSE_READY, ({ saved }) => {
     finishWindowClose(saved)

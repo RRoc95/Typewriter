@@ -2,6 +2,7 @@ import { copyFile, mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test'
+import { ROOM_THEME_IDS } from '../../src/shared/theme-tokens'
 
 const TEST_FONT = join(process.cwd(), 'node_modules/@fontsource/courier-prime/files/courier-prime-latin-400-normal.woff2')
 const runningApps = new Set<ElectronApplication>()
@@ -12,6 +13,15 @@ test.afterEach(async () => {
   }
   runningApps.clear()
 })
+
+async function activateWindow(app: ElectronApplication): Promise<void> {
+  await app.evaluate(({ app, BrowserWindow }) => {
+    app.focus({ steal: true })
+    const win = BrowserWindow.getAllWindows()[0]
+    win.show()
+    win.focus()
+  })
+}
 
 async function launch(userData?: string) {
   const dir = userData ?? (await mkdtemp(join(tmpdir(), 'tw-e2e-')))
@@ -28,6 +38,7 @@ async function launch(userData?: string) {
   app.once('close', () => runningApps.delete(app))
   const win = await app.firstWindow()
   await win.waitForSelector('[data-testid="editor"]', { timeout: 40_000 })
+  await activateWindow(app)
   return { app, win, userData: dir }
 }
 
@@ -66,6 +77,111 @@ test('编辑器可输入、主题切换不重建 DOM、字数进状态栏', asyn
   await mkdir('artifacts', { recursive: true })
   await win.screenshot({ path: 'artifacts/theme-midnight.png' })
 
+  await app.close()
+})
+
+test('木屋主题保留编辑状态、加载素材、动画可降级并持久化', async () => {
+  const { app, win, userData } = await launch()
+  const errors: string[] = []
+  win.on('pageerror', (error) => errors.push(error.message))
+  win.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()) })
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1498, 1050))
+  // macOS can clamp the native window to the display; emulate the design viewport
+  // so visual comparisons use the same pixel dimensions on smaller displays.
+  await win.setViewportSize({ width: 1498, height: 1050 })
+  await win.emulateMedia({ reducedMotion: 'no-preference' })
+  const editor = win.getByTestId('editor')
+  const originalEditor = await editor.elementHandle()
+  await editor.click()
+  await win.keyboard.insertText('第一章')
+  await mkdir('artifacts/rooms', { recursive: true })
+
+  for (const theme of ROOM_THEME_IDS) {
+    await win.click('.titlebar .chip:nth-child(2)')
+    await win.getByTestId(`theme-${theme}`).click()
+    await expect(win.locator('html')).toHaveAttribute('data-theme', theme)
+    await win.click('.studio-head .icon-btn')
+    await expect(editor).toHaveValue('第一章')
+    expect(await originalEditor!.evaluate((node) => node === document.querySelector('[data-testid="editor"]'))).toBe(true)
+    await expect.poll(() => win.locator('.room-backdrop img').evaluateAll((images) =>
+      images.length === 4 && images.every((image) => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0)
+    )).toBe(true)
+
+    const flame = win.locator('.room-flame-main')
+    await activateWindow(app)
+    await expect(flame).toHaveCSS('animation-play-state', 'running')
+    const frame = await flame.evaluate((node) => getComputedStyle(node).transform)
+    await expect.poll(() => flame.evaluate((node) => getComputedStyle(node).transform)).not.toBe(frame)
+    // Capture after the panel's width transition and the stage's geometry settle.
+    await expect.poll(() => win.locator('.viewport').evaluate((node) => Math.round(node.getBoundingClientRect().width))).toBe(1498)
+    await expect(win.locator('.toast')).toHaveCount(0)
+    await win.screenshot({ path: `artifacts/rooms/${theme}.png`, scale: 'css' })
+    await expect.poll(async () => JSON.parse(await readFile(join(userData, 'settings.json'), 'utf8')).theme).toBe(theme)
+  }
+
+  // Native undo history survives switching all three environments.
+  await editor.focus()
+  await win.keyboard.press(process.platform === 'darwin' ? 'Meta+z' : 'Control+z')
+  await expect(editor).toHaveValue('')
+  await win.keyboard.press(process.platform === 'darwin' ? 'Meta+Shift+z' : 'Control+y')
+  await expect(editor).toHaveValue('第一章')
+
+  await win.emulateMedia({ reducedMotion: 'reduce' })
+  await expect(win.locator('.room-flame-main')).toHaveCSS('animation-name', 'none')
+  await win.emulateMedia({ reducedMotion: 'no-preference' })
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].hide())
+  await expect(win.locator('.room-backdrop')).toHaveAttribute('data-inactive', 'true')
+  await expect(win.locator('.room-flame-main')).toHaveCSS('animation-play-state', 'paused')
+  await activateWindow(app)
+  await expect(win.locator('.room-backdrop')).toHaveAttribute('data-inactive', 'false')
+
+  await win.click('.titlebar .chip:nth-child(1)')
+  await expect(win.locator('.room-backdrop')).toHaveAttribute('data-paused', 'true')
+  await expect(editor).toHaveValue('第一章')
+  await win.click('.focus-exit')
+  await expect(win.locator('.room-backdrop')).toHaveAttribute('data-paused', 'false')
+
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(900, 700))
+  await win.setViewportSize({ width: 900, height: 700 })
+  await win.click('.titlebar .chip:nth-child(2)')
+  await expect(win.getByTestId('theme-candlelit-study')).toHaveAttribute('data-active', 'true')
+  await win.screenshot({ path: 'artifacts/rooms/narrow-panel.png', scale: 'css' })
+  await win.click('.studio-head .icon-btn')
+  await app.close()
+
+  const restored = await launch(userData)
+  restored.win.on('pageerror', (error) => errors.push(error.message))
+  await expect(restored.win.locator('html')).toHaveAttribute('data-theme', 'candlelit-study')
+  await expect(restored.win.locator('.room-flame-main')).toBeVisible()
+  // Returning to a legacy theme removes both the environment and its chrome texture.
+  await restored.win.click('.titlebar .chip:nth-child(2)')
+  await restored.win.getByTestId('theme-paper-ink').click()
+  await expect(restored.win.locator('.room-backdrop')).toHaveCount(0)
+  await expect(restored.win.locator('html')).toHaveAttribute('data-room', 'false')
+  await expect(restored.win.locator('.titlebar')).toHaveCSS('background-image', 'none')
+  await restored.win.getByTestId('theme-green-baize').click()
+  await restored.win.click('.studio-head .icon-btn')
+  for (const theme of ROOM_THEME_IDS) {
+    await restored.win.keyboard.press(process.platform === 'darwin' ? 'Meta+Shift+t' : 'Control+Shift+t')
+    await expect(restored.win.locator('html')).toHaveAttribute('data-theme', theme)
+  }
+  expect(errors).toEqual([])
+  await restored.app.close()
+})
+
+test('大文件停止房间火焰，恢复短文后继续播放', async () => {
+  const { app, win } = await launch()
+  await win.emulateMedia({ reducedMotion: 'no-preference' })
+  await win.click('.titlebar .chip:nth-child(2)')
+  await win.getByTestId('theme-hearth-inn').click()
+  await win.click('.studio-head .icon-btn')
+  await win.getByTestId('editor').fill('x'.repeat(2_000_001))
+  await expect(win.locator('.stage')).toHaveAttribute('data-lite', 'true')
+  await expect(win.locator('.room-flame-main')).toHaveCSS('animation-play-state', 'paused')
+  await win.getByTestId('editor').fill('短文')
+  await expect(win.locator('.stage')).toHaveAttribute('data-lite', 'false')
+  await activateWindow(app)
+  await expect(win.locator('.room-flame-main')).toHaveCSS('animation-play-state', 'running')
   await app.close()
 })
 

@@ -2,7 +2,7 @@
 
 Status: active
 Created: 2026-11-02T16:47:05+08:00
-Last Updated: 2026-11-02T17:13:08+08:00
+Last Updated: 2026-11-02T20:01:08+08:00
 
 本 ExecPlan 是 living document。执行过程中持续更新进度、发现、决策、验证与结果，遵循根 `PLANS.md`。
 
@@ -19,6 +19,13 @@ Last Updated: 2026-11-02T17:13:08+08:00
 - [ ] 核对产物、更新使用文档与架构说明，归档计划并交付仓库和运行链接。
 
 ## Surprises & Discoveries
+
+- Observation: 首次远端运行在慢速 runner 暴露标签标题与自动保存竞争、退出遇到进行中写入，以及 Intel Mac 虚拟 GPU 上下文失败。
+  Evidence: run 41418855410；Windows 与 arm64 的标签断言为“未命名”、退出等待超时；Intel 完成打包但出现 WebGL context BindToCurrentSequence 错误。
+  Impact: 首次保存等待配置间隔；保存快照更新草稿标题，显式保存串行等待并刷新最新内容；CI 测试使用真实软件 WebGL，不跳过渲染和控制台检查。
+- Observation: 用户在等待期间新增三套木屋主题、背景素材与原生窗口活动事件，并明确要求纳入此次发布。
+  Evidence: 2026-11-02 用户确认“包含，按当前代码继续适配和验证”；工作区 roomScenes、RoomBackdrop、rooms.css 与主题 E2E。
+  Impact: 以当前工作区为新的发布基准，保留这些功能和另一个活动计划，重新运行完整验证。
 
 - Observation: 本机 Electron postinstall 后只留下部分解压内容，运行时缺失；环境中的跳过下载变量未设置。
   Evidence: 缓存 ZIP 114344775 字节、585 项，SHA-256 与包内 checksums.json 相符，包含 app 可执行文件；用系统 unzip 恢复后可实际启动 Electron。
@@ -127,6 +134,8 @@ Working directory: repository root.
 
 ## Artifacts and Notes
 
+纳入新主题后的检查：typecheck 与 lint 通过；单测 70 passed / 1 skipped。软件 WebGL 首轮 E2E 9 passed / 1 failed，唯一失败是新动画用例在失焦后仍期望运行；已为用例加入明确前台激活，按同样的 CI 环境复测。
+
 本地行为：`npm run typecheck` passed；`npm run build` passed；`npm run e2e` 8 passed（25 秒）。
 
 本地初轮：`npm run lint` passed；`npm test` 62 passed / 1 skipped（真实 TTC 字体不存在）。
@@ -142,5 +151,7 @@ Working directory: repository root.
 保持 `src/shared/ipc.ts` 与 `src/preload/api.d.ts` 的桥类型同步；新增平台信息用于渲染层快捷键展示。维持 `SaveRequest`、设置文件版本、主题与菜单共享定义的兼容性。现有依赖可从 npm 获取；优先不添加运行时依赖。
 
 ## Revision Note
+
+- 2026-11-02T19:53:00+08:00 — 纳入用户新主题和素材；根据真实 CI 失败修复保存时序并配置 CI 软件 WebGL，增加五项控制器回归测试。
 
 - 2026-11-02T16:47:05+08:00 — 根据平台代码和实际账号信息建立计划，明确三平台打包与公开 Actions 的验收标准。

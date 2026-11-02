@@ -2,12 +2,16 @@
  * 设计令牌：每套主题 = 一组 token；token 拍平成 CSS 自定义属性。
  */
 
+export const ROOM_THEME_IDS = ['hearth-inn', 'rainy-cabin', 'candlelit-study'] as const
+export type RoomThemeId = (typeof ROOM_THEME_IDS)[number]
+
 export const THEME_IDS = [
   'paper-ink',
   'midnight-study',
   'moonlit-poetry',
   'sepia-underwood',
-  'green-baize'
+  'green-baize',
+  ...ROOM_THEME_IDS
 ] as const
 export type ThemeId = (typeof THEME_IDS)[number]
 
@@ -83,7 +87,7 @@ const SERIF = 'Georgia, "Source Han Serif SC", "Noto Serif SC", SimSun, serif'
 const SANS = 'DengXian, "Microsoft YaHei", system-ui, sans-serif'
 const MONO = 'Consolas, "Courier New", monospace'
 
-export const THEMES: Record<ThemeId, ThemeTokens> = {
+const BASE_THEMES: Record<Exclude<ThemeId, RoomThemeId>, ThemeTokens> = {
   'paper-ink': {
     id: 'paper-ink',
     name: 'Paper & Ink',
@@ -237,6 +241,49 @@ export const THEMES: Record<ThemeId, ThemeTokens> = {
       text: '#E6E0CE',
       textDim: '#9AA68C',
       accent: '#C9A227'
+    }
+  }
+}
+
+// 木屋主题共享纸面、墨色及机械光照，环境切换不改变打字机本身。
+const writingDesk = BASE_THEMES['paper-ink']
+
+export const THEMES: Record<ThemeId, ThemeTokens> = {
+  ...BASE_THEMES,
+  'hearth-inn': {
+    ...writingDesk,
+    id: 'hearth-inn',
+    name: '炉火旅店',
+    blurb: '栗木梁柱，壁炉微光，温暖的写作角落',
+    room: { ...writingDesk.room, wallTop: '#352014', vignette: 0.18 },
+    ui: {
+      ...writingDesk.ui,
+      frame: '#28180F', panel: '#2C1C12', panelBorder: '#805127',
+      text: '#F3E6CF', textDim: '#CCB393', accent: '#E1AD58'
+    }
+  },
+  'rainy-cabin': {
+    ...writingDesk,
+    id: 'rainy-cabin',
+    name: '雨夜木屋',
+    blurb: '窗外细雨，胡桃木墙，灯笼里的暖焰',
+    room: { ...writingDesk.room, wallTop: '#28201A', vignette: 0.2 },
+    ui: {
+      ...writingDesk.ui,
+      frame: '#201811', panel: '#251E18', panelBorder: '#6C5033',
+      text: '#F0E5D3', textDim: '#C4B39B', accent: '#D3AB6B'
+    }
+  },
+  'candlelit-study': {
+    ...writingDesk,
+    id: 'candlelit-study',
+    name: '烛光书房',
+    blurb: '蜂蜜色橡木，铜烛台，安静的一页',
+    room: { ...writingDesk.room, wallTop: '#51321D', vignette: 0.12 },
+    ui: {
+      ...writingDesk.ui,
+      frame: '#372314', panel: '#352315', panelBorder: '#8C6033',
+      text: '#F8EBD4', textDim: '#D8C09C', accent: '#E8BD78'
     }
   }
 }

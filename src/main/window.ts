@@ -13,6 +13,11 @@ let quitRequested = false
 
 export const getMainWindow = (): BrowserWindow | null => mainWindow
 
+export function isWindowActive(): boolean {
+  return !!mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() &&
+    mainWindow.isFocused() && !mainWindow.isMinimized()
+}
+
 export function requestQuit(): void {
   quitRequested = true
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.close()
@@ -105,6 +110,18 @@ export async function createMainWindow(settings: SettingsV1): Promise<BrowserWin
   win.on('blur', () => {
     if (!win.isDestroyed()) tickNow(win, 'blur')
   })
+
+  // backgroundThrottling is disabled for the existing app. Publish native
+  // activity so decorative animations can still pause in hidden windows.
+  const publishActivity = (): void => {
+    if (!win.isDestroyed()) win.webContents.send(CH.WIN_ACTIVITY, isWindowActive())
+  }
+  win.on('focus', publishActivity)
+  win.on('blur', publishActivity)
+  win.on('show', publishActivity)
+  win.on('hide', publishActivity)
+  win.on('minimize', publishActivity)
+  win.on('restore', publishActivity)
 
   win.on('close', (event) => {
     if (closeAllowed) return

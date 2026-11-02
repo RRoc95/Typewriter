@@ -4,6 +4,9 @@ import { subscribeStage } from './bus'
 import { stageLayout, type StageLayout } from './stageLayout'
 import { paperBackground } from './paper'
 import type { MachineTheme } from './Machine3D'
+import type { ThemeId } from '../../../shared/theme-tokens'
+import { RoomBackdrop } from './RoomBackdrop'
+import { roomSceneFor } from './roomScenes'
 
 const Machine3D = lazy(() => import('./Machine3D').then((module) => ({ default: module.Machine3D })))
 
@@ -14,7 +17,7 @@ type StageProps = {
   focus: boolean
   studio: boolean
   theme: {
-    id: string
+    id: ThemeId
     wallBottom: string
     lightKey: string
     lightSource: MachineTheme['source']
@@ -36,6 +39,7 @@ export function Stage({ children, decor, lite, focus, studio, theme, paperFull }
   const [size, setSize] = useState({ width: 0, height: 0 })
 
   const machineOn = decor === 'full' && !focus
+  const roomScene = roomSceneFor(theme.id)
 
   useEffect(() => {
     const node = viewportRef.current
@@ -179,6 +183,9 @@ export function Stage({ children, decor, lite, focus, studio, theme, paperFull }
     >
       <div className="layer-room" />
       <div className="viewport" ref={viewportRef}>
+        {roomScene && (
+          <RoomBackdrop scene={roomScene} height={size.height} paused={lite || !machineOn} />
+        )}
         <div
           className="paper"
           ref={paperRef}

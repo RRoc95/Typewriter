@@ -1,10 +1,11 @@
 import { flattenTheme, THEMES, type ThemeId } from '../../../shared/theme-tokens'
+import { roomSceneFor } from '../stage/roomScenes'
 
 let titleTimer: ReturnType<typeof setTimeout> | null = null
 
 /**
- * 切换主题 = 一帧内批量改 CSS 自定义属性。DOM 结构完全不动，
- * 因此 textarea 的撤销栈、输入法状态、滚动位置都不会被打断。
+ * 一帧内批量更新颜色及外壳属性；舞台可替换背景装饰，始终保留 textarea，
+ * 使原生撤销栈、输入法状态和滚动位置不因切换主题而丢失。
  */
 export function applyTheme(id: ThemeId): void {
   const theme = THEMES[id]
@@ -15,6 +16,8 @@ export function applyTheme(id: ThemeId): void {
   root.dataset.theme = id
   root.dataset.gobo = theme.light.gobo
   root.dataset.mode = theme.mode
+  const scene = roomSceneFor(id)
+  root.dataset.room = String(Boolean(scene))
 
   if (titleTimer) clearTimeout(titleTimer)
   titleTimer = setTimeout(() => {

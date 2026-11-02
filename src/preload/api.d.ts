@@ -11,7 +11,8 @@ import type {
   StatResult,
   FindStatus,
   ThemeBarRequest,
-  MenuCommand
+  MenuCommand,
+  WindowState
 } from '../shared/ipc'
 import type { SettingsV1 } from '../shared/settings'
 
@@ -47,7 +48,7 @@ export type Api = {
     clear: () => Promise<Result<string[]>>
   }
   win: {
-    state: () => Promise<Result<{ bounds: unknown; maximized: boolean }>>
+    state: () => Promise<Result<WindowState>>
     closeReady: (saved: boolean) => Promise<Result<null>>
     setTitle: (title: string) => Promise<Result<null>>
   }
@@ -82,6 +83,7 @@ export type Api = {
   }
   pathForFile: (file: File) => string
   onTick: (cb: (tick: AutosaveTick) => void) => Unsubscribe
+  onWindowActivity: (cb: (active: boolean) => void) => Unsubscribe
   onRequestClose: (cb: () => void) => Unsubscribe
   onMenu: (cb: (command: MenuCommand, payload?: string) => void) => Unsubscribe
   onFindResult: (cb: (status: FindStatus) => void) => Unsubscribe

@@ -3,7 +3,7 @@ import type { AppInfo, FileDoc } from '../../shared/ipc'
 import type { EditAction } from '../../shared/menu'
 import { LARGE_DOC_CHARS, lineHeightPx } from '../../shared/settings'
 import { countText, formatStamp, hashText, titleFromText } from '../../shared/text'
-import { THEMES } from '../../shared/theme-tokens'
+import { THEMES, THEME_IDS } from '../../shared/theme-tokens'
 import { audioEngine } from './audio/AudioEngine'
 import {
   initAutosave,
@@ -318,7 +318,10 @@ export function App() {
     [openDoc]
   )
 
-  const doNew = useCallback(() => createTab(), [createTab])
+  const doNew = useCallback(async () => {
+    if (isDirty() && !(await saveDocument())) return
+    createTab()
+  }, [createTab])
 
   const doSave = useCallback(async () => {
     const ok = await saveDocument()
@@ -387,9 +390,8 @@ export function App() {
       const store = useAppStore.getState()
       const current = store.settings
       if (!current) return
-      const order = ['paper-ink', 'midnight-study', 'moonlit-poetry', 'sepia-underwood', 'green-baize'] as const
-      const index = order.indexOf(current.theme)
-      patchSettings({ theme: order[(index + 1) % order.length] })
+      const index = THEME_IDS.indexOf(current.theme)
+      patchSettings({ theme: THEME_IDS[(index + 1) % THEME_IDS.length] })
     },
     soundTest: () => audioEngine.test(),
     zoomIn: () => {

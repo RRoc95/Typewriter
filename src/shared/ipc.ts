@@ -26,6 +26,7 @@ export const CH = {
   RECENT_CLEAR: 'recent:clear',
 
   WIN_GET_STATE: 'win:getState',
+  WIN_ACTIVITY: 'win:activity',
   WIN_CLOSE_READY: 'win:closeReady',
   WIN_SET_TITLE: 'win:setTitle',
   APP_INFO: 'app:info',
@@ -52,6 +53,13 @@ export const CH = {
 } as const
 
 export type Channel = (typeof CH)[keyof typeof CH]
+
+export type WindowState = {
+  bounds: unknown
+  maximized: boolean
+  /** Native window is visible, focused and not minimized. */
+  active: boolean
+}
 
 export type IoCode =
   | 'EINVAL'

@@ -4,4 +4,5 @@
 
 | 状态 | 计划 |
 | --- | --- |
+| Active | [三套木屋主题与柔和火焰动画](active/2026-11-02-animated-woodland-themes.md) |
 | Active | [Windows/macOS 兼容与公开构建验证](active/2026-11-02-macos-and-github-builds.md) |

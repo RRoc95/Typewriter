@@ -44,6 +44,8 @@ main、preload、renderer → src/shared/* 的共享定义
 
 `stage/Stage.tsx` 使用 CSS 纸张承载正文，`stageLayout.ts` 为纸张和机器共享几何数据，`Machine3D.tsx` 经 `lazy` 加载。主题应用更新根 CSS 变量和数据属性，机身模型可重新 build，编辑元素继续保留。舞台直接响应事件绘制光标与墨迹；机身动画在稳定并空闲后停止请求帧，卸载时释放场景资源。音效由 `audio/AudioEngine.ts` 合成，静音预设关闭音频上下文。
 
+三套木屋主题在 `stage/roomScenes.ts` 映射本地背景、透明火焰和源图坐标。`RoomBackdrop.tsx` 在 viewport 内将图像等比缩放到舞台高度、分别锚定左右边缘，纸张和机器覆盖在其上；面板开合时背景与舞台一起调整。火焰使用 CSS transform/opacity 循环，无逐帧 React 更新；隐藏页面、轻量及非完整舞台暂停动画，系统减少动态效果禁用动画。`styles/rooms.css` 仅对木屋主题应用木质外壳。
+
 ## 5. 文件、保存与会话
 
 `main/ipc/file.ts` 的 `readDocument` 先规范化路径，检查文件类型与 8 MiB 读取上限，再读入字节并检查二进制特征。`services/encoding.ts` 识别 UTF-8、UTF-8 BOM、UTF-16LE BOM，`shared/text.ts` 检测原换行形式并统一内存文本为 LF。成功打开的文件获得单文件授权。
@@ -60,7 +62,7 @@ main/services/autosaveClock.ts 每秒发送 tick，窗口失焦另发 blur tick
 ```
 
 - `autosave/target.ts` 的目标优先级是已有文件路径、用户固定目录、`AppInfo.defaultAutosaveDir`；默认目录由主进程定义为系统文档目录下的 `打字机`。草稿名包含标题和标签的固定 `draftStamp`。当前目标计算没有 `userData/drafts` 回落分支。
-- `autosave/machine.ts` 是无 I/O 的纯状态转换，包含保存代号、pending hash、错误和重试时间；`controller.ts` 持有当前页的全局保存状态与 `inFlight` 门闩。当前 `runTick` 自行按间隔与 phase 调度，没有使用状态机的 `TICK`/`RETRY` 事件；状态机单测不能证明实际调度的退避行为。
+- `autosave/machine.ts` 是无 I/O 的纯状态转换，包含保存代号、pending hash、错误和重试时间；`controller.ts` 持有当前页的全局保存状态与单个进行中的保存 Promise；显式保存等待现有写入，再刷新最新内容，保存期间新增编辑继续保持 dirty。首次自动保存等待配置的完整间隔，首次落盘也同步草稿首行标题。当前 `runTick` 自行按间隔与 phase 调度，没有使用状态机的 `TICK`/`RETRY` 事件；状态机单测不能证明实际调度的退避行为。
 - `SaveRequest` 带编码、EOL 和可空的 `expectMtimeMs`；已有文件的实际 mtime 与期望相差超过 1200 ms 时返回 `ECONFLICT`。控制器显示错误提示，失败结果与是否继续切页、重试或退出分别由调用路径处理。
 - `services/atomicWrite.ts` 在目标同目录创建临时文件，写入、同步、关闭后 rename；对占用相关错误最多尝试三次 rename，rename 失败时清理临时文件。写入或同步阶段失败不经过这段清理。自动保存、设置与会话记录复用此服务。
 - `services/session.ts` 的 `session.json` 只保存目标路径、hash、长度等元信息，不含正文备份。启动时读取目标并比较 hash，记录可能中断的会话；界面显示通知后清除记录，不能将此机制当作未保存正文的恢复功能。
@@ -77,7 +79,7 @@ main/services/autosaveClock.ts 每秒发送 tick，窗口失焦另发 blur tick
 
 `electron-builder.yml` 从 `out/**/*` 与 `package.json` 打包到 `release/`。Windows x64 生成 NSIS 和 ZIP，用户级安装且卸载保留应用数据；Mac 按所选 arm64/x64 架构生成 DMG 和 ZIP，使用高分辨率图标源，当前不做开发者签名或公证。`dist` 选择当前平台，显式平台命令见 [命令说明](AGENTS.md#7-常用命令)，均不自动发布 Release。`pack:dir` 仅生成宿主平台的应用目录。
 
-`.github/workflows/build.yml` 在 Windows、Apple Silicon Mac 与 Intel Mac 原生 runner 使用 Node.js 24，依次执行类型检查、lint、单测、Electron E2E、图标生成、打包和产物启动验证，上传安装包/归档与诊断截图。
+`.github/workflows/build.yml` 在 Windows、Apple Silicon Mac 与 Intel Mac 原生 runner 使用 Node.js 24，依次执行类型检查、lint、单测、Electron E2E、图标生成、打包和产物启动验证，上传安装包/归档与诊断截图。`TW_E2E=1` 且处于 CI 时使用 SwiftShader 软件 WebGL，保留场景与控制台错误断言，正常应用继续使用系统图形后端。
 
 | 修改内容 | 优先查看 |
 | --- | --- |
@@ -93,7 +95,7 @@ main/services/autosaveClock.ts 每秒发送 tick，窗口失焦另发 blur tick
 
 可执行命令、工作目录与平台前提统一见 [AGENTS.md 的常用命令](AGENTS.md#7-常用命令)。
 
-- `tests/unit/` 覆盖设置裁剪、主题令牌与对比度、文本工具、目标路径、保存状态转换、字体解析和路径守卫。其 Node 测试环境不执行实际窗口或文件保存 IPC；没有现成的控制器到主进程保存集成测试。
+- `tests/unit/` 覆盖设置裁剪、主题令牌与对比度、文本工具、目标路径、保存状态转换、字体解析和路径守卫。控制器测试以延迟的文件桥响应验证并发保存、退出前刷新、失败重试和草稿标题；Node 单测不执行实际窗口或主进程文件 I/O，真实落盘由 E2E 覆盖。
 - `tests/e2e/smoke.spec.ts` 使用真实 Electron，覆盖输入、主题结构稳定、字数、自动保存状态栏路径、预置自定义字体的加载/应用、多标签与菜单。测试需要已有 `out/`，字体用例使用依赖内的 WOFF2。自动保存与快捷键用例读取实际落盘内容；显式退出验证先保存，Mac 另测 Dock 激活与打开文件。测试完成通过 close 事件跟踪并清理应用。
 - `scripts/verify-pack.mjs` 按当前平台和架构选择目录产物并使用隔离数据目录启动，断言窗口、输入、字体、主题、光标、3D 挂载和控制台错误，并写入截图；它不验证安装与卸载过程。
 - 类型检查与 lint 验证对应配置的约束，构建验证三端产物生成。IME 候选框、撤销栈、保存冲突、DPI 和安装行为需要按 [README 手工清单](README.md) 在目标环境补充实际验收。

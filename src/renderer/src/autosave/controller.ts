@@ -1,5 +1,5 @@
 import type { AppInfo, AutosaveTick } from '../../../shared/ipc'
-import { formatStamp, hashText, toEol, formatTime } from '../../../shared/text'
+import { formatStamp, hashText, toEol, formatTime, titleFromText } from '../../../shared/text'
 import { activeTab, useAppStore } from '../state/store'
 import { initialAutosave, nextAutosave, type AutosaveState } from './machine'
 import { draftTitle, resolveTargetPath } from './target'
@@ -7,7 +7,7 @@ import { draftTitle, resolveTargetPath } from './target'
 let state: AutosaveState = initialAutosave('')
 let dirty = false
 let lastAttemptAt = 0
-let inFlight = false
+let inFlight: Promise<boolean> | null = null
 let info: AppInfo | null = null
 let readText: () => string = () => ''
 let draftStamp = formatStamp(Date.now())
@@ -22,13 +22,14 @@ export function initAutosave(appInfo: AppInfo, getText: () => string): void {
   info = appInfo
   readText = getText
   startedAt = Date.now()
+  lastAttemptAt = startedAt
   draftStamp = formatStamp(startedAt)
   commit(initialAutosave(''))
 }
 
 export function resetAutosave(hash: string): void {
   dirty = false
-  lastAttemptAt = 0
+  lastAttemptAt = Date.now()
   draftStamp = formatStamp(Date.now())
   // 切过来的这一页内容已经在盘上，状态直接算已保存，不要显示『未开始』
   commit({ ...initialAutosave(hash), phase: hash ? 'saved' : 'idle' })
@@ -65,12 +66,28 @@ function targetFor(text: string): { path: string; isDraft: boolean } | null {
 }
 
 async function performSave(force: boolean): Promise<boolean> {
+  if (inFlight) {
+    if (!force) return false
+    // Closing or switching tabs must wait for the current write, then flush
+    // any newer text instead of reporting an in-progress save as a failure.
+    await inFlight
+    return performSave(true)
+  }
+  const operation = writeSnapshot(force)
+  inFlight = operation
+  try {
+    return await operation
+  } finally {
+    inFlight = null
+  }
+}
+
+async function writeSnapshot(force: boolean): Promise<boolean> {
   const store = useAppStore.getState()
   const settings = store.settings
   const doc = store.doc
   if (!settings) return false
   if (!force && !settings.autosave.enabled) return false
-  if (inFlight) return false
 
   const text = readText()
   const hash = hashText(text)
@@ -84,7 +101,6 @@ async function performSave(force: boolean): Promise<boolean> {
   const target = targetFor(text)
   if (!target) return false
 
-  inFlight = true
   lastAttemptAt = Date.now()
   commit(nextAutosave(state, { t: 'SAVE_START', hash }).state)
   const gen = state.gen
@@ -98,16 +114,18 @@ async function performSave(force: boolean): Promise<boolean> {
     expectMtimeMs: doc.mtimeMs || null
   })
 
-  inFlight = false
-
   if (response.ok) {
-    dirty = false
-    commit(nextAutosave(state, { t: 'SAVE_OK', now: Date.now(), gen, hash }).state)
-    // 自动保存只接管路径，不改标签名：草稿名带时间戳，标签上会很难看
+    const currentHash = hashText(readText())
+    dirty = currentHash !== hash
+    const saved = nextAutosave(state, { t: 'SAVE_OK', now: Date.now(), gen, hash }).state
+    commit(nextAutosave(saved, { t: 'EDIT', hash: currentHash }).state)
+    // A fast save may beat the debounced title update. Keep the first-line
+    // label for new drafts rather than the timestamped disk filename.
     useAppStore.getState().setDoc({
       filePath: response.data.filePath,
       mtimeMs: response.data.mtimeMs,
-      dirty: false
+      dirty,
+      ...(target.isDraft && !doc.filePath ? { name: titleFromText(text, 18) || doc.name } : {})
     })
     if (target.isDraft && !doc.filePath) {
       useAppStore.getState().toast(`已自动保存到 ${response.data.filePath}`)

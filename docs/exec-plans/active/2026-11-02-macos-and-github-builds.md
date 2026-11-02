@@ -2,7 +2,7 @@
 
 Status: active
 Created: 2026-11-02T16:47:05+08:00
-Last Updated: 2026-11-02T21:13:00+08:00
+Last Updated: 2026-11-02T21:31:00+08:00
 
 本 ExecPlan 是 living document。执行过程中持续更新进度、发现、决策、验证与结果，遵循根 `PLANS.md`。
 
@@ -16,10 +16,17 @@ Last Updated: 2026-11-02T21:13:00+08:00
 - [x] 2026-11-02T16:59:00+08:00 — 实现平台窗口、退出/重开、open-file、快捷键、路径和字体适配；单测 62 项通过、1 项系统字体测试条件跳过，lint 通过；E2E 待执行。
 - [x] 2026-11-02T17:13:08+08:00 — 本机 typecheck、lint、build、62 项单测和 8 项 Electron E2E 通过；arm64 DMG/ZIP 生成成功，最终目录产物 11 项启动断言、文本文件关联、随包许可证均验证通过。
 - [x] 2026-11-02T21:03:00+08:00 — 纳入用户新增主题；最新 typecheck/lint、74 项单测（1 条件跳过）、11 项本机 E2E 和 Mac arm64 打包产物的 11 项启动断言通过，包内新素材、文件关联与许可证已核对。
-- [ ] 公开仓库已创建，main 程序提交 `7ddb40b` 已推送；继续观察 [三平台 Actions](https://github.com/RRoc95/Typewriter/actions/runs/41448784694) 并修复实际失败。
+- [x] 2026-11-02T21:18:00+08:00 — 完成软件 WebGL 性能与初始化失败适配；程序提交 53f2270 的本机完整 12 项 E2E 通过（1.6 分钟），重新生成 arm64 DMG/ZIP 并通过更严格的 11 项产物断言，实际 WebGL 上下文存活。
+- [x] 2026-11-02T21:26:00+08:00 — macOS arm64 云端 job 125296083200 成功；74 单测通过、1 条件跳过，12 项 E2E、DMG/ZIP、11 项产物断言与上传完成，安装包归档约 202 MiB。
+- [x] 2026-11-02T21:31:00+08:00 — Windows x64 云端 job 125296083230 成功，NSIS/ZIP 和启动验证、上传完成；Intel Mac 的 10 项 E2E 通过，综合用例总预算耗尽、主题快捷键遇到绘制时序问题，继续修复并验证。
+- [ ] 公开仓库已创建，main 程序提交 `53f2270` 已推送；继续观察 [三平台 Actions](https://github.com/RRoc95/Typewriter/actions/runs/41451058765) 并修复实际失败。
 - [ ] 核对产物、更新使用文档与架构说明，归档计划并交付仓库和运行链接。
 
 ## Surprises & Discoveries
+
+- Observation: Intel SwiftShader 使用 Subzero 后端，综合用例在 300 秒内走到重启恢复后才耗尽预算；原生命令已送达但 CSS 主题属性仍是旧值。
+  Evidence: run 41451058765 的 Intel job 为 10 passed / 2 failed；快捷键日志包含正确的 Meta+Shift+T。App 的 CSS 主题与 Machine3D 重建均使用 passive effect；安装的 React 实现先执行子树的 passive effects，再执行父组件的 effects。
+  Impact: 视觉主题在 layout effect 中先更新，音频/专注同步继续在 passive effect；原生输入测试等待页面绘制后再断言；仅 Intel Mac CI 的综合场景用例总预算改为 600 秒，单项断言仍为 15 秒。
 
 - Observation: 软件 WebGL 的最高档 VSM 阴影使托管桌面交互极慢；退出保存测试也可能被后台自动保存提前满足。
   Evidence: run 41448784694 的 Windows 三主题完整用例通过但耗时 4.7 分钟，多标签页总预算耗尽；Intel 多次点击超时；arm64 退出测试观测到 saved 而非 dirty。本机检测 SwiftShader 后使用模型现有 low 规格，11 项流程从 3.2 分钟降至 1.3 分钟，仍全部通过。
@@ -82,7 +89,7 @@ Last Updated: 2026-11-02T21:13:00+08:00
 
 ## Outcomes & Retrospective
 
-已完成平台实现，保留并纳入用户新增的三套主题。本机完整 11 项 Electron 流程与最新 Mac arm64 安装包的 11 项启动断言通过。公开仓库 https://github.com/RRoc95/Typewriter 已创建并上传；远端三平台矩阵仍在执行，成功后补全最终证据。
+已完成平台实现，保留并纳入用户新增的三套主题。本机完整 12 项 Electron 流程与最新 Mac arm64 安装包的 11 项启动断言通过。公开仓库 https://github.com/RRoc95/Typewriter 已创建并上传；远端三平台矩阵仍在执行，成功后补全最终证据。
 
 ## Context and Orientation
 
@@ -138,13 +145,13 @@ Working directory: repository root.
   Working directory: repository root
   Expected: 类型、lint、逻辑测试、真实窗口行为与产物断言通过。
   Result: passed
-  Evidence: 最新 typecheck、lint、build 均通过；单测 74 passed / 1 skipped；CI=true npm run e2e 为 11 passed（3.2 分钟）；dist:mac -- --arm64 生成含新增主题的 DMG/ZIP；CI=true npm run verify 11 项通过，五种文本关联、全部房间素材和两份许可证存在。
+  Evidence: 最新 typecheck、lint、build 均通过；单测 74 passed / 1 skipped；CI=true npm run e2e 为 12 passed（1.6 分钟）；dist:mac -- --arm64 生成含新增主题的 DMG/ZIP；CI=true npm run verify 11 项通过，实际软件 WebGL 上下文存活且使用 low 规格，五种文本关联、全部房间素材和两份许可证存在。
   Notes: Windows 与 Intel Mac 验证由 Actions 完成。
 - Procedure: GitHub Actions 三平台构建与产物检查
   Working directory: `RRoc95/Typewriter`
   Expected: 同一源码提交的三项 job 成功，产物可见且非空。
   Result: in progress
-  Evidence: 仓库已核对为 public；此前运行的失败和修复记录见发现部分；最新程序提交 7ddb40b 的运行 41448784694 正在执行，尚不声称三平台打包成功。
+  Evidence: 仓库已核对为 public；此前运行的失败和修复记录见发现部分；最新程序提交 53f2270 的运行 41451058765 正在执行，尚不声称三平台打包成功。
   Notes: 真实 IME 候选框与安装交互仍属于手工验收。
 
 ## Idempotence and Recovery
@@ -153,7 +160,17 @@ Working directory: repository root.
 
 ## Artifacts and Notes
 
-程序提交 `7ddb40b` 的 [run 41448784694](https://github.com/RRoc95/Typewriter/actions/runs/41448784694) 已完成但未通过，具体时序与渲染问题见发现部分。软件渲染规格的后续修复已通过本机 11 项完整 E2E（1.3 分钟），新增 WebGL 初始化失败、编辑和专注模式流程也通过（1 项）。等待最新修复的远端矩阵与重新打包，不把前一个本机包作为最终程序产物。
+程序提交 `7ddb40b` 的 [run 41448784694](https://github.com/RRoc95/Typewriter/actions/runs/41448784694) 已完成但未通过，具体时序与渲染问题见发现部分。软件渲染规格的后续修复已通过本机 11 项完整 E2E（1.3 分钟），新增 WebGL 初始化失败、编辑和专注模式流程也通过（1 项）。
+
+最新程序提交：`53f2270`；[run 41451058765](https://github.com/RRoc95/Typewriter/actions/runs/41451058765) 正在执行。硬件 Metal 后端的输入/主题与关闭自动保存后的退出落盘流程 2 项通过；本机完整 12 项流程、随后重新打包与 11 项产物验证均已通过。
+
+| 目标 | 当前远端证据 |
+| --- | --- |
+| Windows x64 | job 成功；NSIS/ZIP、产物断言及上传完成；[下载](https://github.com/RRoc95/Typewriter/actions/runs/41451058765/artifacts/13144953249)，236844548 字节，未过期 |
+| macOS arm64 | job 成功；74 单测通过 / 1 字体条件跳过，12 E2E 通过，DMG/ZIP 和 11 项产物断言通过；[下载](https://github.com/RRoc95/Typewriter/actions/runs/41451058765/artifacts/13144827867)，211746176 字节，未过期 |
+| macOS x64 | 检查、构建通过；E2E 10 passed / 2 failed，正在修复绘制同步及总用例预算 |
+
+本机最终 DMG 的 `hdiutil verify` 返回 checksum VALID，ZIP 的 `unzip -tq` 返回 No errors detected。
 
 纳入新主题后的检查：typecheck 与 lint 通过；单测 70 passed / 1 skipped。软件 WebGL 首轮 E2E 9 passed / 1 failed，唯一失败是新动画用例在失焦后仍期望运行；已为用例加入明确前台激活，按同样的 CI 环境复测。
 

@@ -61,6 +61,11 @@ async function pressCommand(app: ElectronApplication, keyCode: string, shift = f
   expect(inputs).toEqual(expect.arrayContaining([
     expect.objectContaining({ type: 'keyDown', key: expect.stringMatching(new RegExp(`^${keyCode}$`, 'i')), [primary]: true, shift })
   ]))
+  // Native input delivery precedes renderer work. Wait for paint before
+  // checking the resulting UI, including expensive software WebGL.
+  await (await app.firstWindow()).evaluate(() => new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+  }))
 }
 
 async function resizeWindow(app: ElectronApplication, page: Page, width: number, height: number): Promise<number> {
@@ -176,7 +181,11 @@ test('WebGL 不可用时仍可编辑并切换专注模式', async () => {
 test('木屋主题保留编辑状态、加载素材、动画可降级并持久化', async () => {
   // Keep one native editor across three scenes, window changes and a restart.
   // Software rendering needs a larger total budget; assertion timeouts stay unchanged.
-  if (process.env.CI) test.setTimeout(300_000)
+  if (process.env.CI) {
+    // Intel's SwiftShader Subzero backend needs more time for all scenes and
+    // the restart; keep each individual assertion at the existing 15 seconds.
+    test.setTimeout(process.platform === 'darwin' && process.arch === 'x64' ? 600_000 : 300_000)
+  }
   const { app, win, userData } = await launch()
   const errors: string[] = []
   win.on('pageerror', (error) => errors.push(error.message))

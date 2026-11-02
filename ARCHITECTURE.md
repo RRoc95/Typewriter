@@ -83,6 +83,8 @@ main/services/autosaveClock.ts 每秒发送 tick，窗口失焦另发 blur tick
 
 `Machine3D.tsx` 根据实际 WebGL 渲染器选择模型已有的规格：SwiftShader、llvmpipe 等软件渲染器使用 `low`，保留完整模型并省去高成本阴影，硬件渲染器使用 `high`。创建失败时明确标记 WebGL 不可用并保留正文编辑；切换专注模式不会清理空的渲染器。产物检查要求实际存在且未丢失的 WebGL 上下文，仍检查场景、字体、输入和控制台错误。
 
+`App.tsx` 在 layout effect 中应用共享主题、字体和纸张 CSS，先给出可见主题状态，再执行子树中耗时的模型重建；音频与专注状态保持 passive effect 同步。原生快捷键测试等待页面绘制后验证结果。
+
 | 修改内容 | 优先查看 |
 | --- | --- |
 | IPC 或文件格式 | `src/shared/ipc.ts`、`src/preload/api.d.ts`、`src/preload/index.ts`、`src/main/ipc/` 与调用方 |

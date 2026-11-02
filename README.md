@@ -34,7 +34,7 @@ Windows 使用安装包和目录 ZIP，不再使用每次启动都自解压的 p
 | 前端 | **React 19 + TypeScript**，状态用 zustand | 侧栏与主题需要响应式；舞台与编辑器是命令式 DOM，React 只挂一次，不参与每帧 |
 | 编辑内核 | **原生 `<textarea>`** | ① 中文输入法走 Chromium 原生组字，零 JS 干预——这是不可让渡的硬要求；② 原生撤销栈与上屏单元天然对齐；③ 纯文本不需要布局引擎；④ 零依赖 |
 | 舞台 | **three.js 实时 3D 机身 + CSS 纸张** | 机身、滚筒、旋钮、滑轨、字锤、色带盘、键床全部程序化建模，PBR 材质 + 软阴影 + PMREM 环境反射；模型与版式直接移植自 Typewriter Nocturne（MIT），见 `THIRD-PARTY-NOTICES.md` |
-| 启动 | **3D 场景按需懒加载** | three.js 与模型单独成 chunk（1.4 MB），首屏只加载 677 KB 的编辑器，窗口先出现再挂 3D |
+| 启动 | **3D 场景按需懒加载** | three.js 与模型单独成 chunk，首屏加载编辑器，窗口先出现再挂 3D；软件 WebGL 使用轻量渲染规格保留完整机身 |
 | 音效 | **Web Audio 实时合成** | 无音频素材的体积与授权问题；可参数化成多套音色、可随机抖动、可按打字头位置做立体声 |
 | 打包 | **electron-builder 26** | Windows 生成 NSIS + ZIP；macOS 分别生成 arm64/x64 的 DMG + ZIP |
 
@@ -222,7 +222,7 @@ GitHub Actions 使用 `windows-2025`、`macos-15` 和 `macos-15-intel` 原生 ru
 
 - `npm run typecheck` / `npm run lint`：检查三端类型和现有代码规则；配色令牌仍需代码审查确认。
 - `npm test`：验证设置、主题、文本、保存状态机、Windows/POSIX 路径授权、保存目标和平台快捷键。真实系统字体测试按本机字体是否存在条件执行。
-- `npm run e2e`：验证输入、主题切换、实际草稿落盘、跨平台字体加载、标签、菜单、保存快捷键与退出前保存；Mac 另测关窗后重开和 Dock 打开文件。
+- `npm run e2e`：验证输入、主题与动画、实际草稿落盘、跨平台字体加载、标签、菜单、保存快捷键与退出前保存，以及 WebGL 不可用时的编辑和专注模式；Mac 另测关窗后重开和 Dock 打开文件。
 - `npm run verify`：启动真正打包的应用，断言窗口、输入、主题、字体、光标、3D 挂载和控制台错误，并生成 `artifacts/packaged.png`。
 
 **手工验收清单**（建议按顺序过一遍）：

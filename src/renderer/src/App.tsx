@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { AppInfo, FileDoc } from '../../shared/ipc'
 import type { EditAction } from '../../shared/menu'
 import { LARGE_DOC_CHARS, lineHeightPx } from '../../shared/settings'
@@ -205,7 +205,9 @@ export function App() {
 
   /* ---------- 主题/字体/声音 应用 ---------- */
 
-  useEffect(() => {
+  // Apply visible theme feedback before the model's passive effect rebuilds
+  // shaders; CPU-backed WebGL can take much longer than the CSS update.
+  useLayoutEffect(() => {
     if (!settings) return
     applyTheme(settings.theme)
     applyDecor(settings.decor)
@@ -216,10 +218,14 @@ export function App() {
       settings.font.size,
       lineHeightPx(settings.font.size, settings.font.lineHeightRatio)
     )
+    window.dispatchEvent(new Event('tw:theme'))
+  }, [settings])
+
+  useEffect(() => {
+    if (!settings) return
     audioEngine.setPreset(settings.sound.preset)
     audioEngine.setVolume(settings.sound.volume)
     useAppStore.getState().setFocus(settings.focus)
-    window.dispatchEvent(new Event('tw:theme'))
   }, [settings])
 
   useEffect(() => {

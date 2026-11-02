@@ -1,8 +1,8 @@
 # Windows/macOS 兼容与公开构建验证
 
-Status: active
+Status: completed
 Created: 2026-11-02T16:47:05+08:00
-Last Updated: 2026-11-02T21:31:00+08:00
+Last Updated: 2026-11-02T21:56:00+08:00
 
 本 ExecPlan 是 living document。执行过程中持续更新进度、发现、决策、验证与结果，遵循根 `PLANS.md`。
 
@@ -19,8 +19,9 @@ Last Updated: 2026-11-02T21:31:00+08:00
 - [x] 2026-11-02T21:18:00+08:00 — 完成软件 WebGL 性能与初始化失败适配；程序提交 53f2270 的本机完整 12 项 E2E 通过（1.6 分钟），重新生成 arm64 DMG/ZIP 并通过更严格的 11 项产物断言，实际 WebGL 上下文存活。
 - [x] 2026-11-02T21:26:00+08:00 — macOS arm64 云端 job 125296083200 成功；74 单测通过、1 条件跳过，12 项 E2E、DMG/ZIP、11 项产物断言与上传完成，安装包归档约 202 MiB。
 - [x] 2026-11-02T21:31:00+08:00 — Windows x64 云端 job 125296083230 成功，NSIS/ZIP 和启动验证、上传完成；Intel Mac 的 10 项 E2E 通过，综合用例总预算耗尽、主题快捷键遇到绘制时序问题，继续修复并验证。
-- [ ] 公开仓库已创建，main 程序提交 `53f2270` 已推送；继续观察 [三平台 Actions](https://github.com/RRoc95/Typewriter/actions/runs/41451058765) 并修复实际失败。
-- [ ] 核对产物、更新使用文档与架构说明，归档计划并交付仓库和运行链接。
+- [x] 2026-11-02T21:45:00+08:00 — 最新提交 48d99a4 的三项云端 job 均通过 E2E 并进入打包；本机正常 Metal 图形后端的完整 12 项 E2E 也通过（35.2 秒）。
+- [x] 2026-11-02T21:56:00+08:00 — 公开仓库已核对；程序提交 `48d99a4` 的 [三平台 Actions](https://github.com/RRoc95/Typewriter/actions/runs/41454312178) 全部成功，三组非空安装包归档对应同一源码且未过期，上传后的元数据与实际 job 日志均已核对。
+- [x] 2026-11-02T21:56:00+08:00 — 使用文档、架构、最终验证和下载链接已更新；归档本计划，保留独立的木屋主题活动计划。
 
 ## Surprises & Discoveries
 
@@ -89,7 +90,9 @@ Last Updated: 2026-11-02T21:31:00+08:00
 
 ## Outcomes & Retrospective
 
-已完成平台实现，保留并纳入用户新增的三套主题。本机完整 12 项 Electron 流程与最新 Mac arm64 安装包的 11 项启动断言通过。公开仓库 https://github.com/RRoc95/Typewriter 已创建并上传；远端三平台矩阵仍在执行，成功后补全最终证据。
+已完成 Windows/macOS 适配，并纳入用户新增的三套主题与素材。公开仓库 [RRoc95/Typewriter](https://github.com/RRoc95/Typewriter) 的 [run 41454312178](https://github.com/RRoc95/Typewriter/actions/runs/41454312178) 已全部成功：Windows x64、macOS arm64、macOS x64 均完成检查、E2E、打包、11 项真实产物启动断言和上传。本机正常 Metal 与软件 WebGL 后端的完整 12 项流程也均通过。
+
+CI 暴露并修复了保存时序、原生命令输入和软件 WebGL 的性能与绘制同步问题。最终保留全部功能断言，针对 Intel 软件后端的综合流程使用实际可完成的总时间预算。安装包未配置开发者签名与 Mac 公证；真实输入法候选框、DPI 和安装界面仍按 README 手工清单验收，未将这些未执行步骤宣称为通过。
 
 ## Context and Orientation
 
@@ -145,13 +148,13 @@ Working directory: repository root.
   Working directory: repository root
   Expected: 类型、lint、逻辑测试、真实窗口行为与产物断言通过。
   Result: passed
-  Evidence: 最新 typecheck、lint、build 均通过；单测 74 passed / 1 skipped；CI=true npm run e2e 为 12 passed（1.6 分钟）；dist:mac -- --arm64 生成含新增主题的 DMG/ZIP；CI=true npm run verify 11 项通过，实际软件 WebGL 上下文存活且使用 low 规格，五种文本关联、全部房间素材和两份许可证存在。
+  Evidence: 最新 typecheck、lint、build 均通过；单测 74 passed / 1 skipped；CI=true npm run e2e 为 12 passed（1.5 分钟），正常 Metal 后端为 12 passed（35.2 秒）；dist:mac -- --arm64 生成最新 DMG/ZIP；CI=true npm run verify 11 项通过，实际软件 WebGL 上下文存活，五种文本关联、全部房间素材和两份许可证存在。hdiutil verify 与 unzip -tq 均通过。
   Notes: Windows 与 Intel Mac 验证由 Actions 完成。
 - Procedure: GitHub Actions 三平台构建与产物检查
   Working directory: `RRoc95/Typewriter`
   Expected: 同一源码提交的三项 job 成功，产物可见且非空。
-  Result: in progress
-  Evidence: 仓库已核对为 public；此前运行的失败和修复记录见发现部分；最新程序提交 53f2270 的运行 41451058765 正在执行，尚不声称三平台打包成功。
+  Result: passed
+  Evidence: 仓库为 public；程序提交 48d99a4 的运行 41454312178 为 completed/success，三项 job 均为 success。Windows 单测 75 passed，E2E 11 passed / 1 Mac 专用用例跳过；两种 Mac 均为单测 74 passed / 1 系统字体条件跳过，E2E 12 passed。三端各 11 项打包产物断言通过，三组安装包和诊断归档均非空、未过期且对应同一 SHA。
   Notes: 真实 IME 候选框与安装交互仍属于手工验收。
 
 ## Idempotence and Recovery
@@ -160,35 +163,25 @@ Working directory: repository root.
 
 ## Artifacts and Notes
 
-程序提交 `7ddb40b` 的 [run 41448784694](https://github.com/RRoc95/Typewriter/actions/runs/41448784694) 已完成但未通过，具体时序与渲染问题见发现部分。软件渲染规格的后续修复已通过本机 11 项完整 E2E（1.3 分钟），新增 WebGL 初始化失败、编辑和专注模式流程也通过（1 项）。
+最终程序 SHA：`48d99a4d0a10b0497508d7ed71c5534eda1eb5f2`。公开仓库：[RRoc95/Typewriter](https://github.com/RRoc95/Typewriter)；成功运行：[41454312178](https://github.com/RRoc95/Typewriter/actions/runs/41454312178)。
 
-最新程序提交：`53f2270`；[run 41451058765](https://github.com/RRoc95/Typewriter/actions/runs/41451058765) 正在执行。硬件 Metal 后端的输入/主题与关闭自动保存后的退出落盘流程 2 项通过；本机完整 12 项流程、随后重新打包与 11 项产物验证均已通过。
-
-| 目标 | 当前远端证据 |
+| 目标 | 最终远端证据与下载 |
 | --- | --- |
-| Windows x64 | job 成功；NSIS/ZIP、产物断言及上传完成；[下载](https://github.com/RRoc95/Typewriter/actions/runs/41451058765/artifacts/13144953249)，236844548 字节，未过期 |
-| macOS arm64 | job 成功；74 单测通过 / 1 字体条件跳过，12 E2E 通过，DMG/ZIP 和 11 项产物断言通过；[下载](https://github.com/RRoc95/Typewriter/actions/runs/41451058765/artifacts/13144827867)，211746176 字节，未过期 |
-| macOS x64 | 检查、构建通过；E2E 10 passed / 2 failed，正在修复绘制同步及总用例预算 |
+| Windows x64 | job 125306990792 成功；75 单测通过，11 E2E 通过 / 1 Mac 用例跳过；NSIS/ZIP 和 11 项产物断言通过；[下载](https://github.com/RRoc95/Typewriter/actions/runs/41454312178/artifacts/13146738051)，236844911 字节 |
+| macOS arm64 | job 125306990795 成功；74 单测通过 / 1 字体条件跳过，12 E2E 通过；DMG/ZIP 和 11 项产物断言通过；[下载](https://github.com/RRoc95/Typewriter/actions/runs/41454312178/artifacts/13146039900)，211748218 字节 |
+| macOS x64 | job 125306990545 成功；74 单测通过 / 1 字体条件跳过，12 E2E 通过；DMG/ZIP 和 11 项产物断言通过；[下载](https://github.com/RRoc95/Typewriter/actions/runs/41454312178/artifacts/13146643660)，220154215 字节 |
 
-本机最终 DMG 的 `hdiutil verify` 返回 checksum VALID，ZIP 的 `unzip -tq` 返回 No errors detected。
+三组安装包归档已核对为未过期，保留至 2026-11-16；诊断截图归档保留至 2026-11-09。三端类型检查、lint 与构建均通过。Windows E2E 耗时 3.4 分钟，arm64 为 5.0 分钟，Intel 为 7.5 分钟。
 
-纳入新主题后的检查：typecheck 与 lint 通过；单测 70 passed / 1 skipped。软件 WebGL 首轮 E2E 9 passed / 1 failed，唯一失败是新动画用例在失焦后仍期望运行；已为用例加入明确前台激活，按同样的 CI 环境复测。
-
-本地行为：`npm run typecheck` passed；`npm run build` passed；`npm run e2e` 8 passed（25 秒）。
-
-本地初轮：`npm run lint` passed；`npm test` 62 passed / 1 skipped（真实 TTC 字体不存在）。
-
-本机打包：arm64 DMG/ZIP 已生成；`npm run pack:dir` 与 `npm run verify` 通过，11 项断言全部成功，Mac 文本关联和 LICENSE/THIRD-PARTY-NOTICES 随包存在。
-
-公开仓库：https://github.com/RRoc95/Typewriter 。最终远端运行与下载产物核对后记录在此。
-
-基线：`1d07e8e`。实际检查摘要、GitHub 运行和产物链接随进度添加，不保存凭证或大段日志。
+本机最新 arm64 DMG/ZIP 位于 `release/`，`verify` 的 11 项断言通过；DMG 的 `hdiutil verify` 返回 checksum VALID，ZIP 的 `unzip -tq` 返回 No errors detected。仓库基线为 `1d07e8e`；历史失败及修复保留于进度和发现部分。
 
 ## Interfaces and Dependencies
 
 保持 `src/shared/ipc.ts` 与 `src/preload/api.d.ts` 的桥类型同步；新增平台信息用于渲染层快捷键展示。维持 `SaveRequest`、设置文件版本、主题与菜单共享定义的兼容性。现有依赖可从 npm 获取；优先不添加运行时依赖。
 
 ## Revision Note
+
+- 2026-11-02T21:56:00+08:00 — 记录最终三平台成功运行、产物元数据和本机双后端验证，归档兼容与公开构建计划；保留独立的木屋主题计划。
 
 - 2026-11-02T19:53:00+08:00 — 纳入用户新主题和素材；根据真实 CI 失败修复保存时序并配置 CI 软件 WebGL，增加五项控制器回归测试。
 

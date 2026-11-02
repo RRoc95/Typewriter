@@ -79,7 +79,9 @@ main/services/autosaveClock.ts 每秒发送 tick，窗口失焦另发 blur tick
 
 `electron-builder.yml` 从 `out/**/*` 与 `package.json` 打包到 `release/`。Windows x64 生成 NSIS 和 ZIP，用户级安装且卸载保留应用数据；Mac 按所选 arm64/x64 架构生成 DMG 和 ZIP，使用高分辨率图标源，当前不做开发者签名或公证。`dist` 选择当前平台，显式平台命令见 [命令说明](AGENTS.md#7-常用命令)，均不自动发布 Release。`pack:dir` 仅生成宿主平台的应用目录。
 
-`.github/workflows/build.yml` 在 Windows、Apple Silicon Mac 与 Intel Mac 原生 runner 使用 Node.js 24，依次执行类型检查、lint、单测、Electron E2E、图标生成、打包和产物启动验证，上传安装包/归档与诊断截图。`TW_E2E=1` 且处于 CI 时使用 SwiftShader 软件 WebGL，保留场景与控制台错误断言，同时使用 Playwright 常规的后台节流控制以适配虚拟桌面。正常应用继续使用系统图形后端；装饰动画仍由原生窗口活动状态控制暂停。
+`.github/workflows/build.yml` 在 Windows、Apple Silicon Mac 与 Intel Mac 原生 runner 使用 Node.js 24，依次执行类型检查、lint、单测、Electron E2E、图标生成、打包和产物启动验证，上传安装包/归档与诊断截图。`TW_E2E=1` 且处于 CI 时使用 SwiftShader 软件 WebGL，窗口合成不经过 SwiftShader，同时使用 Playwright 常规的后台节流控制以适配虚拟桌面。正常应用使用系统图形后端；装饰动画由原生窗口活动状态控制暂停。
+
+`Machine3D.tsx` 根据实际 WebGL 渲染器选择模型已有的规格：SwiftShader、llvmpipe 等软件渲染器使用 `low`，保留完整模型并省去高成本阴影，硬件渲染器使用 `high`。创建失败时明确标记 WebGL 不可用并保留正文编辑；切换专注模式不会清理空的渲染器。产物检查要求实际存在且未丢失的 WebGL 上下文，仍检查场景、字体、输入和控制台错误。
 
 | 修改内容 | 优先查看 |
 | --- | --- |

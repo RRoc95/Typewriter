@@ -37,6 +37,8 @@ const windows = await app.evaluate(({ BrowserWindow }) =>
 
 const report = await win.evaluate(async () => {
   const root = getComputedStyle(document.documentElement)
+  const canvas = document.querySelector('.machine-canvas')
+  const context = canvas?.dataset.webgl === 'true' ? canvas.getContext('webgl2') : null
   await document.fonts.ready
   return {
     value: document.querySelector('[data-testid="editor"]').value,
@@ -45,7 +47,13 @@ const report = await win.evaluate(async () => {
     courier: document.fonts.check('16px "Courier Prime"'),
     specialElite: document.fonts.check('16px "Special Elite"'),
     caretVisible: document.querySelector('.caret-block').dataset.visible,
-    machine: (() => { const c = document.querySelector('.machine-canvas'); return c ? { w: c.clientWidth, h: c.clientHeight, webgl: c.dataset.webgl !== 'false' } : null })(),
+    machine: canvas ? {
+      w: canvas.clientWidth,
+      h: canvas.clientHeight,
+      webgl: !!context && !context.isContextLost(),
+      quality: canvas.dataset.quality,
+      renderer: canvas.dataset.renderer
+    } : null,
     fontFaces: document.fonts.size,
     welcomeHidden: document.querySelector('.welcome').dataset.show === 'false',
     stats: document.querySelector('.statusbar').textContent.trim().slice(0, 24)
@@ -69,6 +77,8 @@ const checks = [
   ['输入后欢迎层隐藏', report.welcomeHidden === true],
   ['无 console 错误', failures.length === 0]
 ]
+
+console.log('3D renderer:', JSON.stringify(report.machine))
 
 let failed = false
 for (const [label, pass] of checks) {

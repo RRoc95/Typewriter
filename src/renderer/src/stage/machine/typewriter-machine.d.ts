@@ -38,4 +38,4 @@ export type Machine = {
   dispose(): void
 }
 
-export function createMachine(canvas: HTMLCanvasElement, onReady?: () => void): Machine
+export function createMachine(canvas: HTMLCanvasElement, onReady?: () => void): Machine | null

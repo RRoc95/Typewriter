@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { subscribeStage } from './bus'
-import { createMachine } from './machine/typewriter-machine.js'
+import { createMachine, type Machine, type MachineQuality } from './machine/typewriter-machine.js'
 import type { StageLayout } from './stageLayout'
 
 type LightSource = 'carriage' | 'desk-lamp' | 'moonlight'
@@ -26,15 +26,10 @@ type Props = {
   revision: number
 }
 
-type Machine = {
-  build: (spec: unknown) => void
-  render: (state: unknown) => boolean
-  dispose: () => void
-}
-
 export function Machine3D({ layout, theme, paper, serif, grid, pixelRatio, revision }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const machineRef = useRef<Machine | null>(null)
+  const qualityRef = useRef<MachineQuality>('high')
   const specRef = useRef({ layout, theme, paper, serif, grid, pixelRatio })
 
   specRef.current = { layout, theme, paper, serif, grid, pixelRatio }
@@ -46,11 +41,24 @@ export function Machine3D({ layout, theme, paper, serif, grid, pixelRatio, revis
 
     let machine: Machine
     try {
-      machine = createMachine(canvas, () => undefined) as Machine
+      const created = createMachine(canvas, () => undefined)
+      if (!created) {
+        canvas.dataset.webgl = 'false'
+        return
+      }
+      machine = created
     } catch {
       canvas.dataset.webgl = 'false'
       return
     }
+    canvas.dataset.webgl = 'true'
+    const context = canvas.getContext('webgl2')
+    const debug = context?.getExtension('WEBGL_debug_renderer_info')
+    const renderer = context && debug ? String(context.getParameter(debug.UNMASKED_RENDERER_WEBGL)) : ''
+    // Keep the complete model on CPU-backed WebGL without expensive VSM shadows.
+    qualityRef.current = /swiftshader|llvmpipe|software|microsoft basic render/i.test(renderer) ? 'low' : 'high'
+    canvas.dataset.quality = qualityRef.current
+    canvas.dataset.renderer = renderer
     machineRef.current = machine
 
     return () => {
@@ -66,7 +74,7 @@ export function Machine3D({ layout, theme, paper, serif, grid, pixelRatio, revis
     machine.build({
       layout,
       pixelRatio: Math.min(pixelRatio, 2),
-      quality: 'high',
+      quality: qualityRef.current,
       grid,
       theme,
       paper,

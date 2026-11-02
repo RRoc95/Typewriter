@@ -2,7 +2,7 @@
 
 Status: active
 Created: 2026-11-02T16:47:05+08:00
-Last Updated: 2026-11-02T20:55:00+08:00
+Last Updated: 2026-11-02T21:13:00+08:00
 
 本 ExecPlan 是 living document。执行过程中持续更新进度、发现、决策、验证与结果，遵循根 `PLANS.md`。
 
@@ -15,10 +15,15 @@ Last Updated: 2026-11-02T20:55:00+08:00
 - [x] 2026-11-02T16:47:05+08:00 — 检查平台代码、测试与打包配置；确认 GitHub 账号 RRoc95，Typewriter 名称尚未使用；初始化本地 Git 并保存源码基线 `1d07e8e`。
 - [x] 2026-11-02T16:59:00+08:00 — 实现平台窗口、退出/重开、open-file、快捷键、路径和字体适配；单测 62 项通过、1 项系统字体测试条件跳过，lint 通过；E2E 待执行。
 - [x] 2026-11-02T17:13:08+08:00 — 本机 typecheck、lint、build、62 项单测和 8 项 Electron E2E 通过；arm64 DMG/ZIP 生成成功，最终目录产物 11 项启动断言、文本文件关联、随包许可证均验证通过。
-- [ ] 公开仓库已创建，main 源码提交 `fdf7e0e` 已推送；继续观察三平台 Actions 并修复实际失败。
+- [x] 2026-11-02T21:03:00+08:00 — 纳入用户新增主题；最新 typecheck/lint、74 项单测（1 条件跳过）、11 项本机 E2E 和 Mac arm64 打包产物的 11 项启动断言通过，包内新素材、文件关联与许可证已核对。
+- [ ] 公开仓库已创建，main 程序提交 `7ddb40b` 已推送；继续观察 [三平台 Actions](https://github.com/RRoc95/Typewriter/actions/runs/41448784694) 并修复实际失败。
 - [ ] 核对产物、更新使用文档与架构说明，归档计划并交付仓库和运行链接。
 
 ## Surprises & Discoveries
+
+- Observation: 软件 WebGL 的最高档 VSM 阴影使托管桌面交互极慢；退出保存测试也可能被后台自动保存提前满足。
+  Evidence: run 41448784694 的 Windows 三主题完整用例通过但耗时 4.7 分钟，多标签页总预算耗尽；Intel 多次点击超时；arm64 退出测试观测到 saved 而非 dirty。本机检测 SwiftShader 后使用模型现有 low 规格，11 项流程从 3.2 分钟降至 1.3 分钟，仍全部通过。
+  Impact: 根据实际软件渲染器选择低成本阴影规格，保留完整模型和真实动画；补正 createMachine 的可空返回类型和失败标记，产物验证要求存活的实际 WebGL 上下文；新增初始化失败的回归流程。退出测试关闭自动保存以单独验证退出时落盘。
 
 - Observation: 全量 SwiftShader 同时承担窗口合成和 WebGL 时，托管 Intel Mac 的多个操作等不到动画帧；Windows 还会异步裁剪超出桌面的窗口。
   Evidence: run 41446412524 的 Intel 点击稳定性检查超时，Windows 原生/页面尺寸不同步；本机软件 GPU 进程持续占用多个 CPU 核心。
@@ -77,7 +82,7 @@ Last Updated: 2026-11-02T20:55:00+08:00
 
 ## Outcomes & Retrospective
 
-已完成平台实现及本机 8 项真实 Electron 流程。公开仓库 https://github.com/RRoc95/Typewriter 已创建；待推送与远端三平台构建完成后补全结果。
+已完成平台实现，保留并纳入用户新增的三套主题。本机完整 11 项 Electron 流程与最新 Mac arm64 安装包的 11 项启动断言通过。公开仓库 https://github.com/RRoc95/Typewriter 已创建并上传；远端三平台矩阵仍在执行，成功后补全最终证据。
 
 ## Context and Orientation
 
@@ -133,13 +138,13 @@ Working directory: repository root.
   Working directory: repository root
   Expected: 类型、lint、逻辑测试、真实窗口行为与产物断言通过。
   Result: passed
-  Evidence: typecheck、lint、build 均通过；单测 62 passed / 1 skipped，E2E 8 passed（25 秒）；dist:mac -- --arm64 生成 DMG/ZIP；最终 pack:dir + verify 11 项通过，文件关联和两份许可证存在。
+  Evidence: 最新 typecheck、lint、build 均通过；单测 74 passed / 1 skipped；CI=true npm run e2e 为 11 passed（3.2 分钟）；dist:mac -- --arm64 生成含新增主题的 DMG/ZIP；CI=true npm run verify 11 项通过，五种文本关联、全部房间素材和两份许可证存在。
   Notes: Windows 与 Intel Mac 验证由 Actions 完成。
 - Procedure: GitHub Actions 三平台构建与产物检查
   Working directory: `RRoc95/Typewriter`
   Expected: 同一源码提交的三项 job 成功，产物可见且非空。
-  Result: not run
-  Evidence: 公开仓库已创建并推送 main，等待远端真实 job 结果。
+  Result: in progress
+  Evidence: 仓库已核对为 public；此前运行的失败和修复记录见发现部分；最新程序提交 7ddb40b 的运行 41448784694 正在执行，尚不声称三平台打包成功。
   Notes: 真实 IME 候选框与安装交互仍属于手工验收。
 
 ## Idempotence and Recovery
@@ -148,7 +153,7 @@ Working directory: repository root.
 
 ## Artifacts and Notes
 
-最新检查：提交 6f662ba 的本机完整 11 项 E2E 通过；typecheck/lint 通过，单测 74 passed / 1 skipped。run 41446412524 的 Windows 与 Intel Mac 失败原因已记录；正在验证窗口尺寸同步、原生输入确认与 WebGL 专用软件后端，未将当前失败称为打包成功。
+程序提交 `7ddb40b` 的 [run 41448784694](https://github.com/RRoc95/Typewriter/actions/runs/41448784694) 已完成但未通过，具体时序与渲染问题见发现部分。软件渲染规格的后续修复已通过本机 11 项完整 E2E（1.3 分钟），新增 WebGL 初始化失败、编辑和专注模式流程也通过（1 项）。等待最新修复的远端矩阵与重新打包，不把前一个本机包作为最终程序产物。
 
 纳入新主题后的检查：typecheck 与 lint 通过；单测 70 passed / 1 skipped。软件 WebGL 首轮 E2E 9 passed / 1 failed，唯一失败是新动画用例在失焦后仍期望运行；已为用例加入明确前台激活，按同样的 CI 环境复测。
 
@@ -158,7 +163,7 @@ Working directory: repository root.
 
 本机打包：arm64 DMG/ZIP 已生成；`npm run pack:dir` 与 `npm run verify` 通过，11 项断言全部成功，Mac 文本关联和 LICENSE/THIRD-PARTY-NOTICES 随包存在。
 
-公开仓库：https://github.com/RRoc95/Typewriter 。源码提交：`fdf7e0e`。
+公开仓库：https://github.com/RRoc95/Typewriter 。最终远端运行与下载产物核对后记录在此。
 
 基线：`1d07e8e`。实际检查摘要、GitHub 运行和产物链接随进度添加，不保存凭证或大段日志。
 

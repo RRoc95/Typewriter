@@ -107,6 +107,10 @@ async function launch(userData?: string) {
 
 test('编辑器可输入、主题切换不重建 DOM、字数进状态栏', async () => {
   const { app, win } = await launch()
+  const machine = win.locator('.machine-canvas')
+  await expect(machine).toHaveAttribute('data-webgl', 'true')
+  if (process.env.CI) await expect(machine).toHaveAttribute('data-quality', 'low')
+  console.log('3D renderer:', await machine.getAttribute('data-renderer'))
 
   const editor = win.locator('[data-testid="editor"]')
   await editor.click()
@@ -140,6 +144,32 @@ test('编辑器可输入、主题切换不重建 DOM、字数进状态栏', asyn
   await mkdir('artifacts', { recursive: true })
   await win.screenshot({ path: 'artifacts/theme-midnight.png' })
 
+  await app.close()
+})
+
+test('WebGL 不可用时仍可编辑并切换专注模式', async () => {
+  const { app, win } = await launch()
+  const errors: string[] = []
+  win.on('pageerror', (error) => errors.push(error.message))
+  // Inject a failed WebGL context before the reloaded application initializes.
+  // Canvas2D remains available for paper textures and text measurement.
+  await win.addInitScript(() => {
+    const getContext = HTMLCanvasElement.prototype.getContext
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, options?: unknown) {
+      if (type === 'webgl' || type === 'webgl2' || type === 'experimental-webgl') return null
+      return getContext.call(this, type, options)
+    } as typeof getContext
+  })
+  await win.reload()
+  await activateWindow(app)
+  await expect(win.locator('.machine-canvas')).toHaveAttribute('data-webgl', 'false')
+  await win.getByTestId('editor').fill('无 GPU 仍可写作')
+  await win.click('.titlebar .chip:nth-child(1)')
+  await expect(win.locator('.machine-canvas')).toHaveCount(0)
+  await win.click('.focus-exit')
+  await expect(win.locator('.machine-canvas')).toHaveAttribute('data-webgl', 'false')
+  await expect(win.getByTestId('editor')).toHaveValue('无 GPU 仍可写作')
+  expect(errors).toEqual([])
   await app.close()
 })
 
@@ -370,7 +400,9 @@ test('平台主题快捷键每次只切换一套', async () => {
 })
 
 test('退出应用先保存当前文稿', async () => {
-  const { app, win, userData } = await launch()
+  const userData = await mkdtemp(join(tmpdir(), 'tw-quit-'))
+  await writeFile(join(userData, 'settings.json'), JSON.stringify({ autosave: { enabled: false } }))
+  const { app, win } = await launch(userData)
   await win.locator('[data-testid="editor"]').click()
   await win.keyboard.insertText('退出前保存')
   await expect(win.locator('.save-state')).toHaveAttribute('data-phase', 'dirty')

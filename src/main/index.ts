@@ -14,8 +14,11 @@ import { pathGuard } from './security/pathGuard'
 // automated checks using Chromium's software backend, with the sandbox intact.
 if (process.env.TW_E2E === '1' && process.env.CI) {
   app.commandLine.appendSwitch('use-gl', 'angle')
-  app.commandLine.appendSwitch('use-angle', 'swiftshader')
+  app.commandLine.appendSwitch('use-angle', 'swiftshader-webgl')
   app.commandLine.appendSwitch('enable-unsafe-swiftshader')
+  // Use SwiftShader only for WebGL. Routing the entire desktop compositor
+  // through it can starve animation frames on CPU-only hosted Mac runners.
+  app.commandLine.appendSwitch('disable-gpu-compositing')
   app.commandLine.appendSwitch('force-device-scale-factor', '1')
   // Match Playwright's browser test controls for virtual/occluded desktops.
   // Decorative motion still pauses through the application's native activity events.

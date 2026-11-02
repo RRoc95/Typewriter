@@ -1,7 +1,8 @@
 import { copyFile, mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test'
+import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test'
+import type { Input } from 'electron'
 import { ROOM_THEME_IDS } from '../../src/shared/theme-tokens'
 
 const TEST_FONT = join(process.cwd(), 'node_modules/@fontsource/courier-prime/files/courier-prime-latin-400-normal.woff2')
@@ -23,22 +24,65 @@ async function activateWindow(app: ElectronApplication): Promise<void> {
     win.webContents.focus()
   })
   await (await app.firstWindow()).bringToFront()
-  await expect.poll(() => app.evaluate(({ BrowserWindow }) =>
-    BrowserWindow.getAllWindows()[0].isFocused()
-  )).toBe(true)
+  await expect.poll(() => app.evaluate(({ BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0]
+    return window.isFocused() && window.webContents.isFocused()
+  })).toBe(true)
 }
 
 async function pressCommand(app: ElectronApplication, keyCode: string, shift = false): Promise<void> {
   await activateWindow(app)
   const primary: 'meta' | 'control' = process.platform === 'darwin' ? 'meta' : 'control'
   // Application accelerators need Electron input; CDP keys only target the DOM.
-  await app.evaluate(({ BrowserWindow }, { keyCode, primary, shift }) => {
+  const inputs = await app.evaluate(({ BrowserWindow }, { keyCode, primary, shift }) => {
     const modifiers: ('meta' | 'control' | 'shift')[] = [primary]
     if (shift) modifiers.push('shift')
     const contents = BrowserWindow.getAllWindows()[0].webContents
-    contents.sendInputEvent({ type: 'keyDown', keyCode, modifiers })
-    contents.sendInputEvent({ type: 'keyUp', keyCode, modifiers })
+    return new Promise<Input[]>((resolve, reject) => {
+      const inputs: Input[] = []
+      const timeout = setTimeout(() => {
+        contents.removeListener('before-input-event', observe)
+        reject(new Error(`Native key did not reach before-input-event: ${JSON.stringify(inputs)}`))
+      }, 15_000)
+      const observe = (_event: Electron.Event, input: Input): void => {
+        inputs.push(input)
+        // Handled accelerators can consume keyup before this hook on macOS.
+        if (input.type !== 'keyDown' || input.key.toLowerCase() !== keyCode.toLowerCase()) return
+        clearTimeout(timeout)
+        contents.removeListener('before-input-event', observe)
+        resolve(inputs)
+      }
+      contents.on('before-input-event', observe)
+      contents.sendInputEvent({ type: 'keyDown', keyCode, modifiers })
+      contents.sendInputEvent({ type: 'keyUp', keyCode, modifiers })
+    })
   }, { keyCode, primary, shift })
+  console.log('Native shortcut:', JSON.stringify(inputs.map(({ type, key, control, meta, shift, alt }) => ({ type, key, control, meta, shift, alt }))))
+  expect(inputs).toEqual(expect.arrayContaining([
+    expect.objectContaining({ type: 'keyDown', key: expect.stringMatching(new RegExp(`^${keyCode}$`, 'i')), [primary]: true, shift })
+  ]))
+}
+
+async function resizeWindow(app: ElectronApplication, page: Page, width: number, height: number): Promise<number> {
+  await app.evaluate(({ BrowserWindow, screen }, { width, height }) => {
+    const window = BrowserWindow.getAllWindows()[0]
+    const area = screen.getDisplayMatching(window.getBounds()).workArea
+    const [outerWidth, outerHeight] = window.getSize()
+    const [innerWidth, innerHeight] = window.getContentSize()
+    // Keep the whole native window on the hosted display, including its frame.
+    window.setContentSize(
+      Math.min(width, area.width - (outerWidth - innerWidth) - 40),
+      Math.min(height, area.height - (outerHeight - innerHeight) - 40)
+    )
+  }, { width, height })
+  // Read the native size again after the renderer has acknowledged its resize;
+  // an oversized request can be clamped asynchronously by the window manager.
+  await expect.poll(async () => {
+    const nativeWidth = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getContentSize()[0])
+    const rendererWidth = await page.evaluate(() => window.innerWidth)
+    return { nativeWidth, rendererWidth, matches: nativeWidth === rendererWidth }
+  }).toMatchObject({ matches: true })
+  return page.evaluate(() => window.innerWidth)
 }
 
 async function launch(userData?: string) {
@@ -107,13 +151,7 @@ test('木屋主题保留编辑状态、加载素材、动画可降级并持久�
   const errors: string[] = []
   win.on('pageerror', (error) => errors.push(error.message))
   win.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()) })
-  const [viewportWidth] = await app.evaluate(({ BrowserWindow }) => {
-    const window = BrowserWindow.getAllWindows()[0]
-    window.setContentSize(1498, 1050)
-    return window.getContentSize()
-  })
-  // Use the actual native viewport: hosted Mac displays may clamp the window.
-  await expect.poll(() => win.evaluate(() => window.innerWidth)).toBe(viewportWidth)
+  const viewportWidth = await resizeWindow(app, win, 1498, 1050)
   await win.emulateMedia({ reducedMotion: 'no-preference' })
   const editor = win.getByTestId('editor')
   const originalEditor = await editor.elementHandle()
@@ -166,8 +204,8 @@ test('木屋主题保留编辑状态、加载素材、动画可降级并持久�
   await win.click('.focus-exit')
   await expect(win.locator('.room-backdrop')).toHaveAttribute('data-paused', 'false')
 
-  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(900, 700))
-  await expect.poll(() => win.evaluate(() => window.innerWidth)).toBe(900)
+  const narrowWidth = await resizeWindow(app, win, 900, 700)
+  expect(narrowWidth).toBeLessThanOrEqual(900)
   await win.click('.titlebar .chip:nth-child(2)')
   await expect(win.getByTestId('theme-candlelit-study')).toHaveAttribute('data-active', 'true')
   await win.screenshot({ path: 'artifacts/rooms/narrow-panel.png', scale: 'css' })
@@ -216,11 +254,8 @@ test('自动保存把未命名文稿写入默认目录', async () => {
   const { app, win } = await launch()
   await win.locator('[data-testid="editor"]').click()
   await win.keyboard.insertText('自动保存测试 draft')
-  await win.waitForTimeout(12_000)
-
-  const text = await win.locator('.statusbar .path').textContent()
-  expect(text ?? '').toContain('打字机')
-  expect(text ?? '').toContain('.txt')
+  await expect(win.locator('.statusbar .path')).toContainText('打字机')
+  await expect(win.locator('.statusbar .path')).toContainText('.txt')
   const filePath = await win.locator('.statusbar .path').getAttribute('title')
   expect(filePath).toBeTruthy()
   expect(await readFile(filePath!, 'utf8')).toBe('自动保存测试 draft')

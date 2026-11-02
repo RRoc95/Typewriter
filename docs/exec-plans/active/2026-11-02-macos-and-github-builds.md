@@ -2,7 +2,7 @@
 
 Status: active
 Created: 2026-11-02T16:47:05+08:00
-Last Updated: 2026-11-02T20:38:49+08:00
+Last Updated: 2026-11-02T20:55:00+08:00
 
 本 ExecPlan 是 living document。执行过程中持续更新进度、发现、决策、验证与结果，遵循根 `PLANS.md`。
 
@@ -19,6 +19,13 @@ Last Updated: 2026-11-02T20:38:49+08:00
 - [ ] 核对产物、更新使用文档与架构说明，归档计划并交付仓库和运行链接。
 
 ## Surprises & Discoveries
+
+- Observation: 全量 SwiftShader 同时承担窗口合成和 WebGL 时，托管 Intel Mac 的多个操作等不到动画帧；Windows 还会异步裁剪超出桌面的窗口。
+  Evidence: run 41446412524 的 Intel 点击稳定性检查超时，Windows 原生/页面尺寸不同步；本机软件 GPU 进程持续占用多个 CPU 核心。
+  Impact: 按 Chromium 官方文档将 CI 改为 swiftshader-webgl 并禁用 GPU 合成，仍执行真实 WebGL；测试按宿主 workArea 调整尺寸并等待页面确认。
+- Observation: macOS 处理过的命令快捷键能触发 before-input-event 的 keyDown，但 keyUp 不再经过该监听器。
+  Evidence: 本机输入探针收到有效 Meta+S/Meta+Shift+T keyDown、实际命令已完成，等待 keyUp 的诊断用例超时。
+  Impact: 快捷键测试等待 keyDown 确认送达，仍发送松键事件，并继续断言保存结果和每次主题切换。
 
 - Observation: CDP 键盘事件到达 DOM，但没有经过 Electron before-input-event，也没有派发自定义菜单命令；原生 sendInputEvent 能经过该入口。
   Evidence: 独立输入探针中两种 CDP 大小写组合的 commands 均为空；原生输入在命令路由启用时发送一次 themeNext，禁用后不再发送。
@@ -141,7 +148,7 @@ Working directory: repository root.
 
 ## Artifacts and Notes
 
-最新检查：typecheck/lint 通过；单测 74 passed / 1 skipped；原生保存与单次主题轮换两项 E2E 通过（25.5 秒），完整 11 项流程与新云端矩阵继续验证。
+最新检查：提交 6f662ba 的本机完整 11 项 E2E 通过；typecheck/lint 通过，单测 74 passed / 1 skipped。run 41446412524 的 Windows 与 Intel Mac 失败原因已记录；正在验证窗口尺寸同步、原生输入确认与 WebGL 专用软件后端，未将当前失败称为打包成功。
 
 纳入新主题后的检查：typecheck 与 lint 通过；单测 70 passed / 1 skipped。软件 WebGL 首轮 E2E 9 passed / 1 failed，唯一失败是新动画用例在失焦后仍期望运行；已为用例加入明确前台激活，按同样的 CI 环境复测。
 

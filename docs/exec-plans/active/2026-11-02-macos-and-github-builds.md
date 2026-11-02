@@ -2,7 +2,7 @@
 
 Status: active
 Created: 2026-11-02T16:47:05+08:00
-Last Updated: 2026-11-02T17:10:15+08:00
+Last Updated: 2026-11-02T17:13:08+08:00
 
 本 ExecPlan 是 living document。执行过程中持续更新进度、发现、决策、验证与结果，遵循根 `PLANS.md`。
 
@@ -14,8 +14,8 @@ Last Updated: 2026-11-02T17:10:15+08:00
 
 - [x] 2026-11-02T16:47:05+08:00 — 检查平台代码、测试与打包配置；确认 GitHub 账号 RRoc95，Typewriter 名称尚未使用；初始化本地 Git 并保存源码基线 `1d07e8e`。
 - [x] 2026-11-02T16:59:00+08:00 — 实现平台窗口、退出/重开、open-file、快捷键、路径和字体适配；单测 62 项通过、1 项系统字体测试条件跳过，lint 通过；E2E 待执行。
-- [ ] 本机类型检查、lint、62 项单测和 8 项 Electron E2E 已通过；macOS arm64 DMG 已生成，ZIP 与产物启动验证继续进行。
-- [ ] 创建公开 GitHub 仓库，推送源码并观察三平台 Actions 结果，修复实际失败。
+- [x] 2026-11-02T17:13:08+08:00 — 本机 typecheck、lint、build、62 项单测和 8 项 Electron E2E 通过；arm64 DMG/ZIP 生成成功，最终目录产物 11 项启动断言、文本文件关联、随包许可证均验证通过。
+- [ ] 公开仓库已创建，main 源码提交 `fdf7e0e` 已推送；继续观察三平台 Actions 并修复实际失败。
 - [ ] 核对产物、更新使用文档与架构说明，归档计划并交付仓库和运行链接。
 
 ## Surprises & Discoveries
@@ -39,6 +39,11 @@ Last Updated: 2026-11-02T17:10:15+08:00
   Impact: 新建公开仓库属于用户明确要求，使用 CLI 创建和 Git 推送；连接器没有仓库创建接口。
 
 ## Decision Log
+
+- Decision: 纯 Markdown 与 LICENSE 变更不触发重新打包，代码/配置变更仍运行完整矩阵。
+  Rationale: 文档归档不改变程序产物，保留最近一次实际程序构建的证据。
+  Trade-offs: 文档本身通过本地链接、格式与范围检查验证。
+  Date/Author: 2026-11-02 / Codex。
 
 - Decision: 保留现有 Electron/React 架构与原生 textarea，按平台调整窗口、生命周期、菜单、路径和测试。
   Rationale: 平台兼容不需要替换编辑内核或增加运行时依赖。
@@ -106,14 +111,14 @@ Working directory: repository root.
 - Procedure: 本地自动化、macOS 打包及产物验证
   Working directory: repository root
   Expected: 类型、lint、逻辑测试、真实窗口行为与产物断言通过。
-  Result: not run
-  Evidence: typecheck、lint、build 均通过；单测 62 passed / 1 skipped，E2E 8 passed（25 秒）；打包与产物验证尚未全部结束。
+  Result: passed
+  Evidence: typecheck、lint、build 均通过；单测 62 passed / 1 skipped，E2E 8 passed（25 秒）；dist:mac -- --arm64 生成 DMG/ZIP；最终 pack:dir + verify 11 项通过，文件关联和两份许可证存在。
   Notes: Windows 与 Intel Mac 验证由 Actions 完成。
 - Procedure: GitHub Actions 三平台构建与产物检查
   Working directory: `RRoc95/Typewriter`
   Expected: 同一源码提交的三项 job 成功，产物可见且非空。
   Result: not run
-  Evidence: 待公开仓库创建和推送。
+  Evidence: 公开仓库已创建并推送 main，等待远端真实 job 结果。
   Notes: 真实 IME 候选框与安装交互仍属于手工验收。
 
 ## Idempotence and Recovery
@@ -125,6 +130,10 @@ Working directory: repository root.
 本地行为：`npm run typecheck` passed；`npm run build` passed；`npm run e2e` 8 passed（25 秒）。
 
 本地初轮：`npm run lint` passed；`npm test` 62 passed / 1 skipped（真实 TTC 字体不存在）。
+
+本机打包：arm64 DMG/ZIP 已生成；`npm run pack:dir` 与 `npm run verify` 通过，11 项断言全部成功，Mac 文本关联和 LICENSE/THIRD-PARTY-NOTICES 随包存在。
+
+公开仓库：https://github.com/RRoc95/Typewriter 。源码提交：`fdf7e0e`。
 
 基线：`1d07e8e`。实际检查摘要、GitHub 运行和产物链接随进度添加，不保存凭证或大段日志。
 
